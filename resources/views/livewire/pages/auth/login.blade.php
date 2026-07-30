@@ -25,10 +25,13 @@ new #[Layout('layouts.guest')] class extends Component
 }; ?>
 
 <div>
-    <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
+    <h1 class="font-heading text-2xl font-bold text-navy-900">Welcome back</h1>
+    <p class="mt-1 text-sm text-navy-500">Log in to track orders and manage your account.</p>
 
-    <form wire:submit="login">
+    <!-- Session Status -->
+    <x-auth-session-status class="mt-6" :status="session('status')" />
+
+    <form wire:submit="login" class="mt-8 {{ $errors->any() ? 'animate-shake' : '' }}">
         <!-- Email Address -->
         <div>
             <x-input-label for="email" :value="__('Email')" />
@@ -51,21 +54,27 @@ new #[Layout('layouts.guest')] class extends Component
         <!-- Remember Me -->
         <div class="block mt-4">
             <label for="remember" class="inline-flex items-center">
-                <input wire:model="form.remember" id="remember" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember">
-                <span class="ms-2 text-sm text-gray-600">{{ __('Remember me') }}</span>
+                <input wire:model="form.remember" id="remember" type="checkbox" class="rounded border-navy-200 text-gold-500 shadow-sm focus:ring-gold-500" name="remember">
+                <span class="ms-2 text-sm text-navy-600">{{ __('Remember me') }}</span>
             </label>
         </div>
 
-        <div class="flex items-center justify-end mt-4">
+        <div class="flex items-center justify-between mt-6 gap-4">
             @if (Route::has('password.request'))
-                <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('password.request') }}" wire:navigate>
+                <a class="text-sm text-navy-500 hover:text-gold-600 transition-colors" href="{{ route('password.request') }}" wire:navigate>
                     {{ __('Forgot your password?') }}
                 </a>
             @endif
 
-            <x-primary-button class="ms-3">
-                {{ __('Log in') }}
+            <x-primary-button wire:loading.attr="disabled" wire:target="login">
+                <span wire:loading.remove wire:target="login">{{ __('Log in') }}</span>
+                <span wire:loading wire:target="login">{{ __('Logging in...') }}</span>
             </x-primary-button>
         </div>
     </form>
+
+    <p class="mt-8 text-center text-sm text-navy-500">
+        Don't have an account?
+        <a href="{{ route('register') }}" wire:navigate class="font-semibold text-navy-700 hover:text-gold-600 transition-colors">Sign up</a>
+    </p>
 </div>

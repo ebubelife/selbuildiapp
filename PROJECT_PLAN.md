@@ -53,16 +53,18 @@ Implementation: `spatie/laravel-permission` for roles, with `users.role` as the 
 
 ### 3.1 Color palette
 
-Estimated from the shared logo — **once `public/images/logo.png` is dropped in, I'll extract exact hex values and update this table + `tailwind.config.js`.**
+Extracted directly from `public/images/logo.jpeg` (pixel-sampled, not eyeballed) and expanded into a tint/shade scale.
 
-| Token | Approx. hex | Use |
+| Token | Hex | Use |
 |---|---|---|
-| `navy-900` | `#071A33` | Hero/footer backgrounds, deepest surfaces |
-| `navy-700` | `#0B2545` | Primary brand color, headers, primary text on light bg |
-| `navy-500` | `#24456F` | Secondary surfaces, hover states on navy elements |
-| `gold-500` | `#E3A72E` | Primary accent — CTAs, highlights, active states |
-| `gold-300` | `#F2C666` | Hover/lighter accent |
-| `gold-700` | `#B5821E` | Pressed/active accent |
+| `navy-900` | `#060F27` | Hero/footer backgrounds, deepest surfaces |
+| `navy-700` | `#0A1B47` | Primary brand color (logo navy) — headers, primary text on light bg |
+| `navy-500` | `#606B87` | Secondary surfaces, muted text, hover states on navy elements |
+| `navy-100` | `#E6E8ED` | Subtle tinted backgrounds, dividers |
+| `gold-700` | `#A36F00` | Pressed/active accent |
+| `gold-500` | `#D99400` | Primary accent (logo gold) — CTAs, highlights, active states |
+| `gold-300` | `#E4B44C` | Hover/lighter accent |
+| `gold-100` | `#F9EFD9` | Subtle accent backgrounds (badges, callouts) |
 | `neutral-50` | `#F7F8FA` | Page background |
 | `neutral-900` | `#1A1D23` | Body text |
 | Semantic | green/red/blue (standard) | Success / error / info — kept distinct from gold to avoid confusion with brand accent |
@@ -257,7 +259,7 @@ Visual stepper: Placed → Confirmed → Processing → Shipped → Out for Deli
 These need your input before the relevant phase starts — flagged here rather than guessed at:
 
 1. **Payment provider** — Flutterwave vs Paystack vs both; how diaspora card payments are handled if the primary provider restricts foreign-issued cards.
-2. **Exact brand colors** — pending the logo file landing at `public/images/logo.png` for precise hex extraction.
+2. ~~Exact brand colors~~ — **decided**: extracted from the logo, see §3.1.
 3. **SMS provider** for delivery notifications (local Cameroon aggregator vs a regional/international one like Twilio).
-4. **Launch country scope** — Cameroon-only first, or multi-country from day one (affects address/shipping-zone modeling now vs later).
+4. ~~Launch country scope~~ — **decided**: Cameroon-only at launch. Region/city fields in `addresses` should still be structured generically (not hardcoded to Cameroon) so multi-country expansion later doesn't require a schema change — just data.
 5. **Supplier onboarding gatekeeping** — self-serve signup with async admin verification, or fully manual admin-created supplier accounts at launch.

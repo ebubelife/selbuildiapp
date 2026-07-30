@@ -70,7 +70,10 @@ new #[Layout('layouts.guest')] class extends Component
 }; ?>
 
 <div>
-    <form wire:submit="resetPassword">
+    <h1 class="font-heading text-2xl font-bold text-navy-900">Reset your password</h1>
+    <p class="mt-1 text-sm text-navy-500">Choose a new password for your account.</p>
+
+    <form wire:submit="resetPassword" class="mt-8 {{ $errors->any() ? 'animate-shake' : '' }}">
         <!-- Email Address -->
         <div>
             <x-input-label for="email" :value="__('Email')" />
@@ -96,8 +99,8 @@ new #[Layout('layouts.guest')] class extends Component
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
         </div>
 
-        <div class="flex items-center justify-end mt-4">
-            <x-primary-button>
+        <div class="mt-6">
+            <x-primary-button class="w-full justify-center py-3">
                 {{ __('Reset Password') }}
             </x-primary-button>
         </div>

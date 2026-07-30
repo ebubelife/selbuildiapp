@@ -11,8 +11,56 @@ export default {
 
     theme: {
         extend: {
+            colors: {
+                navy: {
+                    50: '#EEF1F6',
+                    100: '#E6E8ED',
+                    200: '#C3CAD8',
+                    300: '#9AA6BC',
+                    500: '#606B87',
+                    700: '#0A1B47',
+                    800: '#081537',
+                    900: '#060F27',
+                },
+                gold: {
+                    50: '#FDF8EE',
+                    100: '#F9EFD9',
+                    300: '#E4B44C',
+                    500: '#D99400',
+                    600: '#BD8100',
+                    700: '#A36F00',
+                },
+            },
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['Inter', ...defaultTheme.fontFamily.sans],
+                heading: ['Sora', ...defaultTheme.fontFamily.sans],
+            },
+            keyframes: {
+                'fade-in-up': {
+                    '0%': { opacity: '0', transform: 'translateY(16px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
+                'fade-in': {
+                    '0%': { opacity: '0' },
+                    '100%': { opacity: '1' },
+                },
+                shimmer: {
+                    '100%': { transform: 'translateX(100%)' },
+                },
+                shake: {
+                    '0%, 100%': { transform: 'translateX(0)' },
+                    '20%, 60%': { transform: 'translateX(-6px)' },
+                    '40%, 80%': { transform: 'translateX(6px)' },
+                },
+            },
+            animation: {
+                'fade-in-up': 'fade-in-up 0.6s ease-out both',
+                'fade-in': 'fade-in 0.6s ease-out both',
+                shimmer: 'shimmer 1.6s infinite',
+                shake: 'shake 0.4s ease-in-out',
+            },
+            boxShadow: {
+                brand: '0 20px 40px -12px rgba(10, 27, 71, 0.25)',
             },
         },
     },

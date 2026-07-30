@@ -34,11 +34,12 @@ new #[Layout('layouts.guest')] class extends Component
 }; ?>
 
 <div>
-    <div class="mb-4 text-sm text-gray-600">
+    <h1 class="font-heading text-2xl font-bold text-navy-900">Confirm your password</h1>
+    <p class="mt-2 text-sm text-navy-500 leading-relaxed">
         {{ __('This is a secure area of the application. Please confirm your password before continuing.') }}
-    </div>
+    </p>
 
-    <form wire:submit="confirmPassword">
+    <form wire:submit="confirmPassword" class="mt-8 {{ $errors->any() ? 'animate-shake' : '' }}">
         <!-- Password -->
         <div>
             <x-input-label for="password" :value="__('Password')" />
@@ -53,8 +54,8 @@ new #[Layout('layouts.guest')] class extends Component
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
 
-        <div class="flex justify-end mt-4">
-            <x-primary-button>
+        <div class="mt-6">
+            <x-primary-button class="w-full justify-center py-3">
                 {{ __('Confirm') }}
             </x-primary-button>
         </div>

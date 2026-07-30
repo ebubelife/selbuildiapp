@@ -37,14 +37,15 @@ new #[Layout('layouts.guest')] class extends Component
 }; ?>
 
 <div>
-    <div class="mb-4 text-sm text-gray-600">
-        {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
-    </div>
+    <h1 class="font-heading text-2xl font-bold text-navy-900">Forgot your password?</h1>
+    <p class="mt-2 text-sm text-navy-500 leading-relaxed">
+        {{ __('No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
+    </p>
 
     <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
+    <x-auth-session-status class="mt-6" :status="session('status')" />
 
-    <form wire:submit="sendPasswordResetLink">
+    <form wire:submit="sendPasswordResetLink" class="mt-8 {{ $errors->any() ? 'animate-shake' : '' }}">
         <!-- Email Address -->
         <div>
             <x-input-label for="email" :value="__('Email')" />
@@ -52,10 +53,14 @@ new #[Layout('layouts.guest')] class extends Component
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
-        <div class="flex items-center justify-end mt-4">
-            <x-primary-button>
+        <div class="mt-6">
+            <x-primary-button class="w-full justify-center py-3">
                 {{ __('Email Password Reset Link') }}
             </x-primary-button>
         </div>
     </form>
+
+    <p class="mt-8 text-center text-sm text-navy-500">
+        <a href="{{ route('login') }}" wire:navigate class="font-semibold text-navy-700 hover:text-gold-600 transition-colors">Back to log in</a>
+    </p>
 </div>

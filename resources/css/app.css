@@ -1,3 +1,44 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    ::selection {
+        background-color: theme('colors.gold.500');
+        color: theme('colors.navy.900');
+    }
+}
+
+@layer components {
+    .skeleton {
+        @apply relative overflow-hidden bg-navy-100;
+    }
+
+    .skeleton::after {
+        content: '';
+        @apply absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/60 to-transparent;
+    }
+
+    .reveal {
+        @apply opacity-0;
+    }
+
+    .reveal.animate-fade-in-up {
+        @apply opacity-100;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}

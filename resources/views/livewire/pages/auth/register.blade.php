@@ -37,7 +37,10 @@ new #[Layout('layouts.guest')] class extends Component
 }; ?>
 
 <div>
-    <form wire:submit="register">
+    <h1 class="font-heading text-2xl font-bold text-navy-900">Create your account</h1>
+    <p class="mt-1 text-sm text-navy-500">Start sourcing building materials from verified suppliers.</p>
+
+    <form wire:submit="register" class="mt-8 {{ $errors->any() ? 'animate-shake' : '' }}">
         <!-- Name -->
         <div>
             <x-input-label for="name" :value="__('Name')" />
@@ -75,14 +78,16 @@ new #[Layout('layouts.guest')] class extends Component
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
         </div>
 
-        <div class="flex items-center justify-end mt-4">
-            <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('login') }}" wire:navigate>
-                {{ __('Already registered?') }}
-            </a>
-
-            <x-primary-button class="ms-4">
-                {{ __('Register') }}
+        <div class="mt-6">
+            <x-primary-button class="w-full justify-center py-3" wire:loading.attr="disabled" wire:target="register">
+                <span wire:loading.remove wire:target="register">{{ __('Create Account') }}</span>
+                <span wire:loading wire:target="register">{{ __('Creating account...') }}</span>
             </x-primary-button>
         </div>
     </form>
+
+    <p class="mt-8 text-center text-sm text-navy-500">
+        Already have an account?
+        <a href="{{ route('login') }}" wire:navigate class="font-semibold text-navy-700 hover:text-gold-600 transition-colors">Log in</a>
+    </p>
 </div>
