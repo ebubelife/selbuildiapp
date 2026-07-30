@@ -45,31 +45,39 @@ jobs:
       # NOT web-accessible. .env lives only on the server and is never
       # touched by this workflow.
       - name: Deploy application code
-        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        uses: easingthemes/ssh-deploy@v6.0.1
         with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./
-          server-dir: ./selbuildi-app/
-          state-name: .ftp-deploy-app-state.json
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/node_modules
-            **/tests/**
-            **/.github/**
-            **/public/**
-            **/.env
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          REMOTE_HOST: ${{ secrets.SSH_HOST }}
+          REMOTE_USER: ${{ secrets.SSH_USERNAME }}
+          SOURCE: ./
+          TARGET: selbuildi-app/
+          EXCLUDE: "/node_modules/, /.git/, /tests/, /.github/, /public/, /.env"
 
       # public/'s contents are the actual web-accessible document root.
       - name: Deploy public assets
-        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        uses: easingthemes/ssh-deploy@v6.0.1
         with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./public/
-          server-dir: ./selbuildi.com/
-          state-name: .ftp-deploy-public-state.json
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          REMOTE_HOST: ${{ secrets.SSH_HOST }}
+          REMOTE_USER: ${{ secrets.SSH_USERNAME }}
+          SOURCE: public/
+          TARGET: selbuildi.com/
+
+      # Expected to fail until .env exists on the server (no APP_KEY/DB yet) -
+      # doesn't fail the whole deploy, since the file sync above is what
+      # actually matters at this stage.
+      - name: Run post-deploy commands
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/selbuildi-app
+            php artisan storage:link || true
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
