@@ -228,15 +228,52 @@ Visual stepper: Placed → Confirmed → Processing → Shipped → Out for Deli
 
 ## 8. Deployment Plan (Dreamhost)
 
-- **Shared hosting vs VPS**: Laravel needs a persistent queue worker, the scheduler, PHP 8.2+, and writable storage. Plain shared hosting makes real-time order/credit processing awkward. **Recommend Dreamhost VPS** (or DreamCompute) so a proper queue worker (via `supervisor`) can run continuously — critical once payments/credit are live. Shared hosting is workable for a static-ish MVP but will need a cron-triggered `queue:work --stop-when-empty` workaround, which delays order processing.
-- **Web root**: point the domain at `public/`, or symlink accordingly.
-- **Env**: `APP_ENV=production`, `APP_DEBUG=false`, MySQL DB provisioned via Dreamhost panel, `.env` never committed.
-- **Assets**: Dreamhost has no Node runtime by default — build `npm run build` locally or via CI, deploy the compiled `public/build` output, don't build on the server.
-- **Cron**: `* * * * * php artisan schedule:run` (required for notifications, score recalculation jobs, credit due-date checks).
-- **Storage**: `php artisan storage:link`, correct permissions on `storage/` and `bootstrap/cache/`.
-- **SSL**: Let's Encrypt via Dreamhost panel.
-- **Backups**: scheduled DB dump, stored off-site (not just on the same VPS).
-- **CI/CD**: simplest viable path — GitHub Actions builds assets and rsyncs over SSH to Dreamhost (no native Forge-style deployment on Dreamhost).
+**Status: implemented** — this is the account we actually have (shared hosting, FTP only, no SSH), not the ideal-world version.
+
+### 8.1 Server layout
+
+Dreamhost's file manager gives us `/home/dh_p722sp/selbuildi.com/` as the web-accessible document root for the domain, with no ability to point it at a `public/` subfolder. So the app is split across two sibling directories under the same FTP account:
+
+```
+/home/dh_p722sp/
+├── selbuildi-app/        ← NOT web-accessible — the whole Laravel app
+│   ├── app/, bootstrap/, config/, database/, routes/, storage/, vendor/, ...
+│   └── .env               ← lives here only, managed by hand, never touched by CI
+│
+└── selbuildi.com/         ← web-accessible (Apache doc root) — public/'s contents only
+    ├── index.php
+    ├── .htaccess
+    ├── build/              ← compiled CSS/JS
+    └── images/, favicons, etc.
+```
+
+To make this work, two files are environment-aware (safe for both local dev and this layout, no separate "deploy" copies to keep in sync):
+- **`public/index.php`** — detects whether `vendor/` is a direct sibling (local dev) or whether it needs to reach into `../selbuildi-app/` (production), via a simple `is_dir()` check.
+- **`bootstrap/app.php`** — after building `$app`, checks whether a sibling `selbuildi.com` directory exists; if so, calls `$app->usePublicPath(...)` so `asset()`/Vite manifest resolution points at the right place.
+
+### 8.2 CI/CD — GitHub Actions
+
+`.github/workflows/deploy.yml` runs on every push to `main`:
+1. Checkout, install Composer deps (`--no-dev --optimize-autoloader`), install Node deps, `npm run build`.
+2. Deploy everything except `public/` (and `.git`, `node_modules`, `tests`, `.github`, `.env`) to `selbuildi-app/` via FTP.
+3. Deploy `public/`'s contents to `selbuildi.com/` via FTP.
+
+Uses `SamKirkland/FTP-Deploy-Action`, non-destructive by default (won't delete server-only files like logs, since `dangerous-clean-slate` is left off) and never touches `.env`.
+
+**Required GitHub repo secrets** (Settings → Secrets and variables → Actions): `FTP_HOST`, `FTP_USERNAME`, `FTP_PASSWORD`.
+
+### 8.3 What CI deliberately does NOT do (and why)
+
+- **No `config:cache`/`route:cache`** — caching config baked with the CI runner's dummy values would silently override the real `.env` on the server (Laravel prefers cached config over `.env`), and there's no SSH to re-cache after an `.env` change. Trading a little runtime performance for correctness here.
+- **No automatic migrations** — no SSH means no way to run `php artisan migrate` remotely. **Open item**: migrations must currently be run by hand (e.g. via a one-off local `mysql` import, or a phpMyAdmin-run SQL dump) until we build a token-protected web route to trigger `artisan migrate --force`, or upgrade to a plan with SSH.
+- **No queue worker** — same constraint as above; anything queued needs `QUEUE_CONNECTION=sync` for now, or a cron-triggered `queue:work --stop-when-empty` if Dreamhost cron jobs are available on this plan.
+
+### 8.4 One-time manual setup (not automated, and shouldn't be)
+
+- Create `selbuildi-app/.env` by hand on the server (production `APP_KEY`, DB credentials, `APP_URL=https://selbuildi.com`, `APP_ENV=production`, `APP_DEBUG=false`).
+- Create the production MySQL database via the Dreamhost panel and run migrations once (see open item above).
+- `storage/` and `bootstrap/cache/` need to be writable by the web server — should work by default since FTP uploads under the same account, but worth confirming after first deploy.
+- SSL via Dreamhost's Let's Encrypt panel option.
 
 ---
 
