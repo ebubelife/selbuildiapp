@@ -1,6 +1,9 @@
 <?php
 
+use App\Http\Controllers\DeployController;
 use Illuminate\Support\Facades\Route;
+
+Route::post('deploy-hook', [DeployController::class, 'run'])->name('deploy-hook');
 
 Route::view('/', 'welcome')->name('home');
 

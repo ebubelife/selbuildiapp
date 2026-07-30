@@ -228,10 +228,11 @@ Visual stepper: Placed → Confirmed → Processing → Shipped → Out for Deli
 
 ## 8. Deployment Plan (Dreamhost)
 
-**Status: implemented.** Went through a few iterations to find what this specific shared hosting account actually tolerates:
+**Status: implemented**, also moved to `github.com/ebubelife/selbuildiapp` (replaces the earlier `selbuildi` repo). Went through a fair number of iterations to find what this specific shared hosting account actually tolerates:
 1. Plain FTP — never worked (530 Login incorrect, every time). Turned out the "FTP" credentials were really SFTP/SSH credentials; this account has full SSH shell access, not plain FTP.
-2. rsync-over-SSH of the whole app (including a CI-built `vendor/`) — got its connection killed partway through (`broken pipe`, `0 bytes received`) once it had to negotiate thousands of small files in one held-open session. Looked like a resource/process limit shared-hosting accounts commonly have for long-lived non-interactive transfers.
-3. **Current approach**: ship only source code + a single compressed archive, and run `composer install` on the server itself — see below.
+2. rsync-over-SSH of the whole app (including a CI-built `vendor/`) — got its connection killed partway through (`broken pipe`, `0 bytes received`) once it had to negotiate thousands of small files in one held-open session.
+3. Shipped only source (no `vendor/`) as a single tarball, ran `composer install` on the server via SSH exec — the *upload* worked fine, but **any** non-interactive SSH command execution (even a trivial `echo`, tested in isolation) either hung indefinitely or returned a fake-looking success after ~2 minutes with zero actual output. This wasn't a tooling problem (ruled out FTP-Deploy-Action, rsync, and scp-action, each with their own unrelated quirks along the way) — it's specific to non-interactive SSH exec on this account, while interactive sessions (password login, FileZilla SFTP) always work correctly.
+4. **Current approach**: avoid SSH command execution entirely — see below.
 
 ### 8.1 Server layout
 
@@ -256,25 +257,22 @@ To make this work, two files are environment-aware (safe for both local dev and 
 
 ### 8.2 CI/CD — GitHub Actions
 
-`.github/workflows/deploy.yml` runs on every push to `main`:
-1. Checkout, install Node deps, `npm run build` — Node runs **only on the CI runner**. It's not reliably available on Dreamhost shared hosting, so only its small compiled output (`public/build/`) ever gets shipped; `node_modules/` never leaves CI.
-2. Package everything except `public/` (and `.git`, `node_modules`, `tests`, `.github`, `.env`, and notably **`vendor/`**, which is never built here at all) into one `deploy-app.tar.gz`, and `public/`'s contents into `deploy-public.tar.gz`.
-3. Upload both archives in one `scp` step (small — a few MB of PHP/blade source and compiled assets, no dependencies).
-4. SSH in: extract both archives into `selbuildi-app/` and `selbuildi.com/`, bootstrap Composer if it isn't already on the account (downloads `composer.phar` once, reuses it after), run `composer install --no-dev` **on the server**, then `storage:link`, `migrate --force`, `config:cache`, `route:cache`, `view:cache`.
+`.github/workflows/deploy.yml` runs on every push to `main`, and **never invokes SSH command execution at all** — only SSH-based file transfer (`scp`, which Dreamhost handles fine) plus a plain HTTPS request:
+1. Checkout, install Node deps, `npm run build` — Node runs **only on the CI runner**; only its small compiled output (`public/build/`) ever gets shipped, `node_modules/` never leaves CI.
+2. Locally (on the runner, no network involved) stage a clean copy of the source tree with `rsync -a --exclude=...`, dropping `.git`, `node_modules`, `tests`, `.github`, `public`, `.env` — and, as before, `vendor/` is never built or shipped here at all.
+3. `scp -r` the staged tree directly into `selbuildi-app/`, and `public/`'s contents directly into `selbuildi.com/` — no server-side extraction needed, so no SSH command execution required for file placement either.
+4. `curl -X POST https://selbuildi.com/deploy-hook` with a secret token — a Laravel route (`DeployController`) that runs `composer install --no-dev` (bootstrapping `composer.phar` itself if needed), `storage:link`, `migrate --force`, `config:cache`, `route:cache`, `view:cache`, all **inside the normal PHP-FPM/Apache request path**, not over SSH.
 
-Why split this way: PHP/Composer is natively, reliably supported on Dreamhost shared hosting over SSH — running `composer install` there means `vendor/` (by far the largest, most numerous set of files) never has to cross the CI→Dreamhost connection at all, sidestepping the resource limit that killed the rsync approach. Node.js is the opposite story (unreliable on shared hosting), so its build output is what gets shipped instead of its runtime.
+**Why the web-hook exists**: `composer install` and the artisan commands still need *some* form of remote command execution — but since SSH exec is what's broken here, that execution happens through the one channel that reliably works instead: a plain web request to the app's own server. The route is protected by `hash_equals()` comparing against `DEPLOY_HOOK_TOKEN` (set in the server's `.env`, never committed) and is excluded from CSRF verification in `bootstrap/app.php` since it's called externally without a Laravel session.
 
-Post-deploy commands run against the server's *real* `.env`, not CI dummy values, so `config:cache` etc. are safe here (unlike a config baked from placeholder values). `migrate`/`config:cache` are allowed to fail without failing the whole step (`|| echo ...`) since they'll legitimately fail until `.env` exists on the server.
-
-Authenticates with a dedicated `github-actions-deploy@selbuildi` SSH keypair (not the personal account key) added to the server's `~/.ssh/authorized_keys`, so it's independently revocable.
-
-**Required GitHub repo secrets** (Settings → Secrets and variables → Actions): `SSH_HOST`, `SSH_USERNAME`, `SSH_PRIVATE_KEY`.
+**Required GitHub repo secrets**: `SSH_HOST`, `SSH_USERNAME`, `SSH_PRIVATE_KEY` (dedicated `github-actions-deploy@selbuildi` keypair, added to `~/.ssh/authorized_keys`, independently revocable — used only for `scp`, never for running commands), and `DEPLOY_HOOK_TOKEN` (matches the server's `.env` value).
 
 ### 8.3 One-time manual setup (not automated, and shouldn't be)
 
-- Create `selbuildi-app/.env` by hand on the server (production `APP_KEY`, DB credentials, `APP_URL=https://selbuildi.com`, `APP_ENV=production`, `APP_DEBUG=false`) — deliberately never touched by CI.
+- Create `~/selbuildi-app/` on the server once, manually over SFTP — `scp -r` can't create a brand-new top-level directory it's copying multiple files into.
+- Create `selbuildi-app/.env` by hand on the server (production `APP_KEY`, DB credentials, `APP_URL=https://selbuildi.com`, `APP_ENV=production`, `APP_DEBUG=false`, and a random `DEPLOY_HOOK_TOKEN` matching the GitHub secret) — deliberately never touched by CI.
 - Create the production MySQL database via the Dreamhost panel (migrations then run automatically on the next deploy once `.env` is in place).
-- SSL via Dreamhost's Let's Encrypt panel option.
+- SSL via Dreamhost's Let's Encrypt panel option — confirmed already working (`https://selbuildi.com` resolves).
 - **Still an open item**: no persistent queue worker or scheduler daemon on shared hosting — anything queued needs `QUEUE_CONNECTION=sync` for now, or a cron-triggered `queue:work --stop-when-empty` / `schedule:run` if Dreamhost cron jobs are available on this plan.
 
 ---

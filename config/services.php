@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'deploy' => [
+        'token' => env('DEPLOY_HOOK_TOKEN'),
+    ],
+
 ];
