@@ -232,7 +232,8 @@ Visual stepper: Placed → Confirmed → Processing → Shipped → Out for Deli
 1. Plain FTP — never worked (530 Login incorrect, every time). Turned out the "FTP" credentials were really SFTP/SSH credentials; this account has full SSH shell access, not plain FTP.
 2. rsync-over-SSH of the whole app (including a CI-built `vendor/`) — got its connection killed partway through (`broken pipe`, `0 bytes received`) once it had to negotiate thousands of small files in one held-open session.
 3. Shipped only source (no `vendor/`) as a single tarball, ran `composer install` on the server via SSH exec — the *upload* worked fine, but **any** non-interactive SSH command execution (even a trivial `echo`, tested in isolation) either hung indefinitely or returned a fake-looking success after ~2 minutes with zero actual output. This wasn't a tooling problem (ruled out FTP-Deploy-Action, rsync, and scp-action, each with their own unrelated quirks along the way) — it's specific to non-interactive SSH exec on this account, while interactive sessions (password login, FileZilla SFTP) always work correctly.
-4. **Current approach**: avoid SSH command execution entirely — see below.
+4. Tried shipping source only + a `/deploy-hook` web route to run `composer install` remotely over HTTP instead of SSH — missed that the hook route is itself part of the app, so it can't be what installs `vendor/` on the very first deploy (nothing can boot Laravel without `vendor/autoload.php` already existing). Chicken-and-egg, not a hosting quirk.
+5. **Current approach**: build `vendor/` on CI like originally, ship it via `scp -r` (not rsync — betting rsync's own bidirectional protocol was what got killed in #2, not sheer size) and use the web hook only for what genuinely needs to run *after* the app can already boot: migrations and cache warmup.
 
 ### 8.1 Server layout
 
@@ -258,12 +259,12 @@ To make this work, two files are environment-aware (safe for both local dev and 
 ### 8.2 CI/CD — GitHub Actions
 
 `.github/workflows/deploy.yml` runs on every push to `main`, and **never invokes SSH command execution at all** — only SSH-based file transfer (`scp`, which Dreamhost handles fine) plus a plain HTTPS request:
-1. Checkout, install Node deps, `npm run build` — Node runs **only on the CI runner**; only its small compiled output (`public/build/`) ever gets shipped, `node_modules/` never leaves CI.
-2. Locally (on the runner, no network involved) stage a clean copy of the source tree with `rsync -a --exclude=...`, dropping `.git`, `node_modules`, `tests`, `.github`, `public`, `.env` — and, as before, `vendor/` is never built or shipped here at all.
-3. `scp -r` the staged tree directly into `selbuildi-app/`, and `public/`'s contents directly into `selbuildi.com/` — no server-side extraction needed, so no SSH command execution required for file placement either.
-4. `curl -X POST https://selbuildi.com/deploy-hook` with a secret token — a Laravel route (`DeployController`) that runs `composer install --no-dev` (bootstrapping `composer.phar` itself if needed), `storage:link`, `migrate --force`, `config:cache`, `route:cache`, `view:cache`, all **inside the normal PHP-FPM/Apache request path**, not over SSH.
+1. Checkout, `composer install --no-dev --optimize-autoloader` and `npm run build` on the CI runner.
+2. Locally (on the runner, no network involved) stage a clean copy with `rsync -a --exclude=...`, dropping `.git`, `node_modules`, `tests`, `.github`, `public`, `.env` — `vendor/` *is* included this time.
+3. `scp -r` the staged tree directly into `selbuildi-app/`, and `public/`'s contents directly into `selbuildi.com/` — no server-side extraction needed, so no SSH command execution required for file placement.
+4. `curl -X POST https://selbuildi.com/deploy-hook` with a secret token — a Laravel route (`DeployController`) that runs `storage:link`, `migrate --force`, `config:cache`, `route:cache`, `view:cache`, all **inside the normal PHP-FPM/Apache request path**, not over SSH. It doesn't run `composer install` — by the time this route is reachable at all, `vendor/` already shipped with the `scp` step above, since the route itself is part of the app that needs `vendor/` to boot.
 
-**Why the web-hook exists**: `composer install` and the artisan commands still need *some* form of remote command execution — but since SSH exec is what's broken here, that execution happens through the one channel that reliably works instead: a plain web request to the app's own server. The route is protected by `hash_equals()` comparing against `DEPLOY_HOOK_TOKEN` (set in the server's `.env`, never committed) and is excluded from CSRF verification in `bootstrap/app.php` since it's called externally without a Laravel session.
+**Why the web-hook exists**: the artisan commands still need *some* form of remote command execution — but since SSH exec is what's broken here, that execution happens through the one channel that reliably works instead: a plain web request to the app's own server. The route is protected by `hash_equals()` comparing against `DEPLOY_HOOK_TOKEN` (set in the server's `.env`, never committed) and is excluded from CSRF verification in `bootstrap/app.php` since it's called externally without a Laravel session.
 
 **Required GitHub repo secrets**: `SSH_HOST`, `SSH_USERNAME`, `SSH_PRIVATE_KEY` (dedicated `github-actions-deploy@selbuildi` keypair, added to `~/.ssh/authorized_keys`, independently revocable — used only for `scp`, never for running commands), and `DEPLOY_HOOK_TOKEN` (matches the server's `.env` value).
 

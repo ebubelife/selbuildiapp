@@ -20,6 +20,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.4
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, mysql, pdo_mysql
+          coverage: none
+
+      - name: Install PHP dependencies (production)
+        run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction --no-progress
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -32,12 +42,18 @@ jobs:
         run: npm run build
 
       # Non-interactive SSH command execution on this shared hosting account
-      # turned out to be unreliable regardless of tool (rsync, ssh-action,
-      # plain ssh all hit the same wall) - so file transfer here avoids ever
-      # needing the server to run a command to receive files: scp -r places
-      # files directly, no remote tar/extract step required. vendor/ is
-      # still not built or shipped here; composer install runs via the web
-      # hook below instead, over a normal HTTPS request rather than SSH.
+      # is unreliable regardless of tool (rsync, ssh-action, plain ssh all
+      # hit the same wall - see PROJECT_PLAN.md §8) - so file transfer here
+      # avoids ever needing the server to run a command: scp -r places files
+      # directly, no remote tar/extract step required.
+      #
+      # vendor/ IS built and shipped here (unlike an earlier iteration of
+      # this workflow) - the /deploy-hook route below is itself part of this
+      # app, so it can't be what installs vendor/ on the very first deploy;
+      # something needs to put vendor/ in place before Laravel can boot at
+      # all. scp already proved reliable for smaller payloads; betting that
+      # rsync's own bidirectional protocol overhead - not sheer size - was
+      # what got killed before.
       - name: Stage app files (excluding dev-only paths)
         run: |
           mkdir -p /tmp/stage-app
@@ -61,7 +77,7 @@ jobs:
       # manually, over SFTP) - scp can't create a brand new top-level
       # directory it's copying multiple files into.
       - name: Upload application files
-        timeout-minutes: 15
+        timeout-minutes: 25
         run: |
           scp -r -i ~/.ssh/deploy_key /tmp/stage-app/. \
             "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:selbuildi-app/"
@@ -75,8 +91,8 @@ jobs:
       # .env lives only on the server and is never touched by this workflow -
       # it isn't part of the staged files, and scp doesn't delete files it
       # isn't sending.
-      - name: Trigger composer install, migrations, and cache warmup
+      - name: Trigger migrations and cache warmup
         run: |
           curl -sS --fail-with-body -X POST "https://selbuildi.com/deploy-hook" \
             --data-urlencode "token=${{ secrets.DEPLOY_HOOK_TOKEN }}" \
-            --max-time 290
+            --max-time 120

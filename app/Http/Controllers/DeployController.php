@@ -5,15 +5,15 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Artisan;
-use Symfony\Component\Process\Process;
 
 class DeployController extends Controller
 {
     /**
-     * Runs post-deploy tasks (composer install, migrations, cache warming)
-     * over a plain HTTP request instead of SSH, since non-interactive SSH
-     * command execution is unreliable on this shared hosting account while
-     * normal web requests are not.
+     * Runs post-deploy tasks (migrations, cache warming) over a plain HTTP
+     * request instead of SSH, since non-interactive SSH command execution
+     * is unreliable on this shared hosting account while normal web
+     * requests are not. vendor/ ships pre-built from CI, so this route
+     * never needs to run composer itself.
      */
     public function run(Request $request): JsonResponse
     {
@@ -23,11 +23,9 @@ class DeployController extends Controller
             abort(403);
         }
 
-        set_time_limit(300);
+        set_time_limit(120);
 
         $steps = [];
-
-        $steps['composer_install'] = $this->runComposerInstall();
 
         Artisan::call('storage:link');
         $steps['storage_link'] = trim(Artisan::output());
@@ -45,41 +43,5 @@ class DeployController extends Controller
         $steps['view_cache'] = trim(Artisan::output());
 
         return response()->json(['status' => 'ok', 'steps' => $steps]);
-    }
-
-    private function runComposerInstall(): string
-    {
-        $basePath = base_path();
-        $composerPhar = $basePath.'/composer.phar';
-
-        $composerBin = 'composer';
-
-        $which = new Process(['which', 'composer']);
-        $which->run();
-
-        if (! $which->isSuccessful()) {
-            if (! file_exists($composerPhar)) {
-                $installer = $basePath.'/composer-setup.php';
-                copy('https://getcomposer.org/installer', $installer);
-
-                $setup = new Process(['php', $installer, '--install-dir='.$basePath, '--filename=composer.phar']);
-                $setup->setTimeout(120);
-                $setup->run();
-
-                @unlink($installer);
-            }
-
-            $composerBin = 'php '.$composerPhar;
-        }
-
-        $process = Process::fromShellCommandline(
-            $composerBin.' install --no-dev --optimize-autoloader --no-interaction --prefer-dist',
-            $basePath,
-            ['COMPOSER_MEMORY_LIMIT' => '-1'],
-        );
-        $process->setTimeout(280);
-        $process->run();
-
-        return trim($process->getOutput()."\n".$process->getErrorOutput());
     }
 }
