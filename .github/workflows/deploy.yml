@@ -36,10 +36,9 @@ jobs:
       # its connection killed on this shared hosting account (broken pipe,
       # 0 bytes received - looks like a resource/process limit on Dreamhost's
       # side for long-lived non-interactive transfers). Composer runs on the
-      # server itself instead, further down, where PHP/Composer is natively
-      # supported. Node never runs on the server - it's not reliably available
-      # on Dreamhost shared hosting, so only its small compiled output
-      # (public/build/) gets shipped, never node_modules/.
+      # server itself instead. Node never runs on the server either - it's
+      # not reliably available on Dreamhost shared hosting, so only its small
+      # compiled output (public/build/) gets shipped, never node_modules/.
       - name: Package application code
         run: |
           tar czf /tmp/deploy-app.tar.gz \
@@ -53,52 +52,28 @@ jobs:
           tar czf /tmp/deploy-public.tar.gz -C public .
           ls -lh /tmp/deploy-app.tar.gz /tmp/deploy-public.tar.gz
 
+      # Plain OpenSSH throughout - already proven to work reliably against
+      # this account (both interactively and from this same runner). Three
+      # different third-party marketplace actions each had their own quirks
+      # here (a plain-FTP action against an SFTP-only account, an rsync
+      # action whose connection got killed on a large transfer, and an
+      # scp action that misdetected this Linux server as Windows) - cutting
+      # out the abstraction entirely removes all three failure modes at once.
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
       - name: Upload archives
         timeout-minutes: 10
-        uses: appleboy/scp-action@v1.0.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: /tmp/deploy-app.tar.gz,/tmp/deploy-public.tar.gz
-          target: ~/
+        run: |
+          scp -i ~/.ssh/deploy_key /tmp/deploy-app.tar.gz /tmp/deploy-public.tar.gz \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:~/"
 
-      # .env lives only on the server and is never touched by this workflow -
-      # it isn't part of either archive, and extracting on top of an existing
-      # directory doesn't delete files the archive doesn't contain.
       - name: Extract archives, install Composer deps, run post-deploy commands
         timeout-minutes: 15
-        uses: appleboy/ssh-action@v1.2.5
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            set -e
-            mkdir -p ~/selbuildi-app ~/selbuildi.com
-            tar xzf ~/deploy-app.tar.gz -C ~/selbuildi-app
-            tar xzf ~/deploy-public.tar.gz -C ~/selbuildi.com
-            rm -f ~/deploy-app.tar.gz ~/deploy-public.tar.gz
-            cd ~/selbuildi-app
-
-            php -v
-
-            if ! command -v composer >/dev/null 2>&1; then
-              if [ ! -f ~/composer.phar ]; then
-                php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-                php composer-setup.php --install-dir="$HOME" --filename=composer.phar
-                rm -f composer-setup.php
-              fi
-              COMPOSER_BIN="php $HOME/composer.phar"
-            else
-              COMPOSER_BIN="composer"
-            fi
-
-            export COMPOSER_MEMORY_LIMIT=-1
-            $COMPOSER_BIN install --no-dev --optimize-autoloader --no-interaction --prefer-dist
-
-            php artisan storage:link || true
-            php artisan migrate --force || echo "migrate failed - .env probably not set up yet"
-            php artisan config:cache || echo "config:cache failed - .env probably not set up yet"
-            php artisan route:cache || true
-            php artisan view:cache || true
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            'bash -s' < .github/deploy/remote-setup.sh
