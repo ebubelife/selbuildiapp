@@ -20,16 +20,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.4
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, mysql, pdo_mysql
-          coverage: none
-
-      - name: Install PHP dependencies (production)
-        run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction --no-progress
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -41,53 +31,74 @@ jobs:
       - name: Build frontend assets
         run: npm run build
 
-      # Everything except public/ goes into a private sibling folder that is
-      # NOT web-accessible. .env lives only on the server and is never
-      # touched by this workflow.
-      #
-      # ARGS overrides the action's default (-rlgoDzvc -i): drop -c (full
-      # checksum read of every file - very slow on a large fresh vendor/ tree)
-      # and -o/-g (preserve owner/group - can stall on restricted shared
-      # hosting SSH setups where chown isn't permitted).
-      - name: Deploy application code
-        timeout-minutes: 15
-        uses: easingthemes/ssh-deploy@v6.0.1
-        with:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          REMOTE_HOST: ${{ secrets.SSH_HOST }}
-          REMOTE_USER: ${{ secrets.SSH_USERNAME }}
-          SOURCE: ./
-          TARGET: selbuildi-app/
-          ARGS: -rlptzv
-          EXCLUDE: "/node_modules/, /.git/, /tests/, /.github/, /public/, /.env"
+      # vendor/ is deliberately NOT built here and NOT shipped - it used to be,
+      # but transferring a large, thousands-of-files vendor/ tree kept getting
+      # its connection killed on this shared hosting account (broken pipe,
+      # 0 bytes received - looks like a resource/process limit on Dreamhost's
+      # side for long-lived non-interactive transfers). Composer runs on the
+      # server itself instead, further down, where PHP/Composer is natively
+      # supported. Node never runs on the server - it's not reliably available
+      # on Dreamhost shared hosting, so only its small compiled output
+      # (public/build/) gets shipped, never node_modules/.
+      - name: Package application code
+        run: |
+          tar czf /tmp/deploy-app.tar.gz \
+            --exclude=.git \
+            --exclude=node_modules \
+            --exclude=tests \
+            --exclude=.github \
+            --exclude=public \
+            --exclude=.env \
+            .
+          tar czf /tmp/deploy-public.tar.gz -C public .
+          ls -lh /tmp/deploy-app.tar.gz /tmp/deploy-public.tar.gz
 
-      # public/'s contents are the actual web-accessible document root.
-      - name: Deploy public assets
+      - name: Upload archives
         timeout-minutes: 10
-        uses: easingthemes/ssh-deploy@v6.0.1
+        uses: appleboy/scp-action@v1.0.0
         with:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          REMOTE_HOST: ${{ secrets.SSH_HOST }}
-          REMOTE_USER: ${{ secrets.SSH_USERNAME }}
-          SOURCE: public/
-          TARGET: selbuildi.com/
-          ARGS: -rlptzv
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: /tmp/deploy-app.tar.gz,/tmp/deploy-public.tar.gz
+          target: ~/
 
-      # Expected to fail until .env exists on the server (no APP_KEY/DB yet) -
-      # doesn't fail the whole deploy, since the file sync above is what
-      # actually matters at this stage.
-      - name: Run post-deploy commands
-        continue-on-error: true
-        timeout-minutes: 5
+      # .env lives only on the server and is never touched by this workflow -
+      # it isn't part of either archive, and extracting on top of an existing
+      # directory doesn't delete files the archive doesn't contain.
+      - name: Extract archives, install Composer deps, run post-deploy commands
+        timeout-minutes: 15
         uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            set -e
+            mkdir -p ~/selbuildi-app ~/selbuildi.com
+            tar xzf ~/deploy-app.tar.gz -C ~/selbuildi-app
+            tar xzf ~/deploy-public.tar.gz -C ~/selbuildi.com
+            rm -f ~/deploy-app.tar.gz ~/deploy-public.tar.gz
             cd ~/selbuildi-app
+
+            php -v
+
+            if ! command -v composer >/dev/null 2>&1; then
+              if [ ! -f ~/composer.phar ]; then
+                php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+                php composer-setup.php --install-dir="$HOME" --filename=composer.phar
+                rm -f composer-setup.php
+              fi
+              COMPOSER_BIN="php $HOME/composer.phar"
+            else
+              COMPOSER_BIN="composer"
+            fi
+
+            export COMPOSER_MEMORY_LIMIT=-1
+            $COMPOSER_BIN install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
             php artisan storage:link || true
-            php artisan migrate --force
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
+            php artisan migrate --force || echo "migrate failed - .env probably not set up yet"
+            php artisan config:cache || echo "config:cache failed - .env probably not set up yet"
+            php artisan route:cache || true
+            php artisan view:cache || true

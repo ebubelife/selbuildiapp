@@ -228,7 +228,10 @@ Visual stepper: Placed → Confirmed → Processing → Shipped → Out for Deli
 
 ## 8. Deployment Plan (Dreamhost)
 
-**Status: implemented.** Initially built for FTP-only, then upgraded once we confirmed the account actually has full SSH shell access (Dreamhost bundles this with the shared hosting account by default — the "FTP" credentials handed over were really SFTP/SSH credentials).
+**Status: implemented.** Went through a few iterations to find what this specific shared hosting account actually tolerates:
+1. Plain FTP — never worked (530 Login incorrect, every time). Turned out the "FTP" credentials were really SFTP/SSH credentials; this account has full SSH shell access, not plain FTP.
+2. rsync-over-SSH of the whole app (including a CI-built `vendor/`) — got its connection killed partway through (`broken pipe`, `0 bytes received`) once it had to negotiate thousands of small files in one held-open session. Looked like a resource/process limit shared-hosting accounts commonly have for long-lived non-interactive transfers.
+3. **Current approach**: ship only source code + a single compressed archive, and run `composer install` on the server itself — see below.
 
 ### 8.1 Server layout
 
@@ -254,12 +257,16 @@ To make this work, two files are environment-aware (safe for both local dev and 
 ### 8.2 CI/CD — GitHub Actions
 
 `.github/workflows/deploy.yml` runs on every push to `main`:
-1. Checkout, install Composer deps (`--no-dev --optimize-autoloader`), install Node deps, `npm run build`.
-2. rsync-over-SSH everything except `public/` (and `.git`, `node_modules`, `tests`, `.github`, `.env`) to `selbuildi-app/`.
-3. rsync-over-SSH `public/`'s contents to `selbuildi.com/`.
-4. SSH in and run `storage:link`, `migrate --force`, `config:cache`, `route:cache`, `view:cache` — safe now because these run against the server's *real* `.env`, not CI dummy values. This step is `continue-on-error: true` since it will legitimately fail until `.env` exists on the server; the file-sync steps are what actually gate deploy success.
+1. Checkout, install Node deps, `npm run build` — Node runs **only on the CI runner**. It's not reliably available on Dreamhost shared hosting, so only its small compiled output (`public/build/`) ever gets shipped; `node_modules/` never leaves CI.
+2. Package everything except `public/` (and `.git`, `node_modules`, `tests`, `.github`, `.env`, and notably **`vendor/`**, which is never built here at all) into one `deploy-app.tar.gz`, and `public/`'s contents into `deploy-public.tar.gz`.
+3. Upload both archives in one `scp` step (small — a few MB of PHP/blade source and compiled assets, no dependencies).
+4. SSH in: extract both archives into `selbuildi-app/` and `selbuildi.com/`, bootstrap Composer if it isn't already on the account (downloads `composer.phar` once, reuses it after), run `composer install --no-dev` **on the server**, then `storage:link`, `migrate --force`, `config:cache`, `route:cache`, `view:cache`.
 
-Uses `easingthemes/ssh-deploy` (rsync, non-destructive — no `--delete` flag, so it never removes server-only files like logs) plus `appleboy/ssh-action` for the post-deploy commands. Authenticates with a dedicated `github-actions-deploy@selbuildi` SSH keypair (not the personal account key) added to the server's `~/.ssh/authorized_keys`, so it's independently revocable.
+Why split this way: PHP/Composer is natively, reliably supported on Dreamhost shared hosting over SSH — running `composer install` there means `vendor/` (by far the largest, most numerous set of files) never has to cross the CI→Dreamhost connection at all, sidestepping the resource limit that killed the rsync approach. Node.js is the opposite story (unreliable on shared hosting), so its build output is what gets shipped instead of its runtime.
+
+Post-deploy commands run against the server's *real* `.env`, not CI dummy values, so `config:cache` etc. are safe here (unlike a config baked from placeholder values). `migrate`/`config:cache` are allowed to fail without failing the whole step (`|| echo ...`) since they'll legitimately fail until `.env` exists on the server.
+
+Authenticates with a dedicated `github-actions-deploy@selbuildi` SSH keypair (not the personal account key) added to the server's `~/.ssh/authorized_keys`, so it's independently revocable.
 
 **Required GitHub repo secrets** (Settings → Secrets and variables → Actions): `SSH_HOST`, `SSH_USERNAME`, `SSH_PRIVATE_KEY`.
 
