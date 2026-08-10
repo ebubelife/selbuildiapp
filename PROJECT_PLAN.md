@@ -281,13 +281,13 @@ To make this work, two files are environment-aware (safe for both local dev and 
 ## 9. Roadmap
 
 - **Phase 0 — Foundation** ✅ *(done)*: Laravel + MySQL + Breeze (Livewire) auth, base project structure.
-- **Phase 1 — Design System & Landing**: Tailwind theme with brand colors/fonts, component library, animated landing page, updated auth screens, responsive nav/footer.
-- **Phase 2 — Catalog & Browsing**: categories, products, product detail page, search & filters, public supplier profiles.
+- **Phase 1 — Design System & Landing** ✅ *(done)*: Tailwind theme with brand colors/fonts, component library, animated landing page, updated auth screens, responsive nav/footer.
+- **Phase 2 — Catalog & Browsing** *(next up)*: categories, products, product detail page, search & filters, public supplier profiles.
 - **Phase 3 — Cart & Checkout**: cart drawer, multi-supplier cart, addresses, checkout flow, first payment integration, order confirmation.
 - **Phase 4 — Order Tracking & Notifications**: status timeline, shipment events, email/SMS notifications, order history.
 - **Phase 5 — Roles Expansion**: contractor projects, supplier dashboard, Filament admin panel.
 - **Phase 6 — Trust & Credit**: trust score engine, credit checkout option, admin credit approval workflow.
-- **Phase 7 — Polish & Launch**: performance pass, accessibility, SEO, security review, Dreamhost deployment, monitoring.
+- **Phase 7 — Polish & Launch**: performance pass, accessibility, SEO, security review, Dreamhost deployment, monitoring. *(Deployment pipeline built — §8 — currently blocked on the hosting account's SSH/PHP-version setup, pending the site manager.)*
 - **Phase 8+ — Future**: financial institution integrations, artisan/architect marketplace, mobile app, multi-country expansion.
 
 ---
