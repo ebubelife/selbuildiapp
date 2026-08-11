@@ -20,17 +20,23 @@ new #[Layout('components.layouts.site')] class extends Component
 <div>
     <section class="pt-32 pb-16 bg-gradient-to-br from-navy-900 via-navy-800 to-navy-700 text-center">
         <div class="max-w-2xl mx-auto px-6">
-            <div
-                x-data="{ shown: false }"
-                x-init="setTimeout(() => shown = true, 100)"
-                :class="shown ? 'scale-100 opacity-100' : 'scale-50 opacity-0'"
-                class="mx-auto flex items-center justify-center w-20 h-20 rounded-full bg-gold-500 text-navy-900 transition-all duration-500 ease-out"
-            >
-                <x-icon name="check" class="w-10 h-10" stroke-width="2.5" />
-            </div>
+            @if ($order->status === 'pending')
+                <div
+                    x-data="{ shown: false }"
+                    x-init="setTimeout(() => shown = true, 100)"
+                    :class="shown ? 'scale-100 opacity-100' : 'scale-50 opacity-0'"
+                    class="mx-auto flex items-center justify-center w-20 h-20 rounded-full bg-gold-500 text-navy-900 transition-all duration-500 ease-out"
+                >
+                    <x-icon name="check" class="w-10 h-10" stroke-width="2.5" />
+                </div>
 
-            <h1 class="mt-6 font-heading text-2xl sm:text-3xl font-bold text-white">Order placed!</h1>
-            <p class="mt-2 text-navy-200">Order <span class="font-semibold text-gold-500">{{ $order->order_number }}</span> is confirmed. We'll keep you updated as it moves.</p>
+                <h1 class="mt-6 font-heading text-2xl sm:text-3xl font-bold text-white">Order placed!</h1>
+                <p class="mt-2 text-navy-200">Order <span class="font-semibold text-gold-500">{{ $order->order_number }}</span> is confirmed. We'll keep you updated as it moves.</p>
+            @else
+                <p class="text-xs font-semibold text-gold-500 uppercase tracking-wide">{{ $order->statusLabel() }}</p>
+                <h1 class="mt-2 font-heading text-2xl sm:text-3xl font-bold text-white">Order {{ $order->order_number }}</h1>
+                <p class="mt-2 text-navy-200">Placed {{ $order->placed_at->format('M j, Y') }} &middot; {{ $order->formattedTotal() }}</p>
+            @endif
         </div>
     </section>
 

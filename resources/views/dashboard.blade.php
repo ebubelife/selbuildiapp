@@ -37,12 +37,53 @@
             @else
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-navy-100">
                     <div class="p-8">
-                        <h3 class="font-heading text-lg font-semibold text-navy-900">
-                            {{ __('Welcome back, :name.', ['name' => explode(' ', auth()->user()->name)[0]]) }}
-                        </h3>
-                        <p class="mt-2 text-sm text-navy-500 leading-relaxed max-w-2xl">
-                            {{ __("Your orders, delivery tracking, and Procurement Trust Score will show up here as soon as you place your first order.") }}
-                        </p>
+                        <div class="flex items-center justify-between flex-wrap gap-3">
+                            <h3 class="font-heading text-lg font-semibold text-navy-900">
+                                {{ __('Welcome back, :name.', ['name' => explode(' ', auth()->user()->name)[0]]) }}
+                            </h3>
+                            @if ($orderCount > 0)
+                                <a href="{{ route('orders.index') }}" wire:navigate class="text-sm font-semibold text-navy-700 hover:text-gold-600 transition-colors flex items-center gap-1">
+                                    View all orders
+                                    <x-icon name="arrow-right" class="w-4 h-4" />
+                                </a>
+                            @endif
+                        </div>
+
+                        @if ($recentOrders->isEmpty())
+                            <p class="mt-2 text-sm text-navy-500 leading-relaxed max-w-2xl">
+                                {{ __("Your orders, delivery tracking, and Procurement Trust Score will show up here as soon as you place your first order.") }}
+                            </p>
+                            <a href="{{ route('shop.index') }}" wire:navigate>
+                                <x-primary-button class="mt-5">Shop Materials</x-primary-button>
+                            </a>
+                        @else
+                            <p class="mt-2 text-sm text-navy-500">{{ $orderCount }} {{ Str::plural('order', $orderCount) }} placed so far.</p>
+
+                            <ul class="mt-6 divide-y divide-navy-100 border border-navy-100 rounded-xl overflow-hidden">
+                                @foreach ($recentOrders as $order)
+                                    <li>
+                                        <a href="{{ route('orders.show', $order) }}" wire:navigate class="flex items-center justify-between gap-4 p-4 hover:bg-navy-50 transition-colors">
+                                            <div>
+                                                <p class="font-semibold text-navy-900 text-sm">{{ $order->order_number }}</p>
+                                                <p class="text-xs text-navy-400 mt-0.5">{{ $order->placed_at->format('M j, Y') }}</p>
+                                            </div>
+                                            <div class="flex items-center gap-4">
+                                                <span @class([
+                                                    'text-xs font-semibold px-3 py-1 rounded-full',
+                                                    'bg-gold-100 text-gold-700' => in_array($order->status, ['pending', 'confirmed', 'processing']),
+                                                    'bg-blue-100 text-blue-700' => in_array($order->status, ['shipped', 'out_for_delivery']),
+                                                    'bg-green-100 text-green-700' => $order->status === 'delivered',
+                                                    'bg-red-100 text-red-700' => in_array($order->status, ['cancelled', 'refunded']),
+                                                ])>
+                                                    {{ $order->statusLabel() }}
+                                                </span>
+                                                <span class="font-semibold text-navy-900 text-sm">{{ $order->formattedTotal() }}</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
                     </div>
                 </div>
             @endif

@@ -33,6 +33,11 @@ new class extends Component
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    @unless (auth()->user()->isSupplier())
+                        <x-nav-link :href="route('orders.index')" :active="request()->routeIs('orders.*')" wire:navigate>
+                            {{ __('My Orders') }}
+                        </x-nav-link>
+                    @endunless
                 </div>
             </div>
 
@@ -84,6 +89,11 @@ new class extends Component
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            @unless (auth()->user()->isSupplier())
+                <x-responsive-nav-link :href="route('orders.index')" :active="request()->routeIs('orders.*')" wire:navigate>
+                    {{ __('My Orders') }}
+                </x-responsive-nav-link>
+            @endunless
         </div>
 
         <!-- Responsive Settings Options -->

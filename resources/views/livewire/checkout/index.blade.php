@@ -4,6 +4,7 @@ use App\Models\Address;
 use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
+use App\Notifications\OrderPlaced;
 use App\Services\CartService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -144,6 +145,8 @@ new #[Layout('components.layouts.site')] class extends Component
 
             return $order;
         });
+
+        Auth::user()->notify(new OrderPlaced($order));
 
         $this->redirect(route('orders.show', $order), navigate: true);
     }

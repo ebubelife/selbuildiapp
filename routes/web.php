@@ -26,12 +26,20 @@ Volt::route('suppliers/{supplier:slug}', 'suppliers.show')->name('suppliers.show
 
 Route::middleware('auth')->group(function () {
     Volt::route('checkout', 'checkout.index')->name('checkout.index');
+    Volt::route('orders', 'orders.index')->name('orders.index');
     Volt::route('orders/{order}', 'orders.show')->name('orders.show');
 });
 
-Route::view('dashboard', 'dashboard')
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
+Route::get('dashboard', function () {
+    $user = auth()->user();
+
+    return view('dashboard', [
+        'recentOrders' => $user->isSupplier()
+            ? collect()
+            : $user->orders()->latest('placed_at')->limit(5)->get(),
+        'orderCount' => $user->isSupplier() ? 0 : $user->orders()->count(),
+    ]);
+})->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::view('profile', 'profile')
     ->middleware(['auth'])
