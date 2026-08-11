@@ -43,6 +43,11 @@ new class extends Component
                             {{ __('My Projects') }}
                         </x-nav-link>
                     @endif
+                    @unless (auth()->user()->isSupplier())
+                        <x-nav-link :href="route('credit.index')" :active="request()->routeIs('credit.*')" wire:navigate>
+                            {{ __('My Credit') }}
+                        </x-nav-link>
+                    @endunless
                 </div>
             </div>
 
@@ -104,6 +109,11 @@ new class extends Component
                     {{ __('My Projects') }}
                 </x-responsive-nav-link>
             @endif
+            @unless (auth()->user()->isSupplier())
+                <x-responsive-nav-link :href="route('credit.index')" :active="request()->routeIs('credit.*')" wire:navigate>
+                    {{ __('My Credit') }}
+                </x-responsive-nav-link>
+            @endunless
         </div>
 
         <!-- Responsive Settings Options -->

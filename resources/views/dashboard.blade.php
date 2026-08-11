@@ -75,6 +75,21 @@
                     </div>
                 @endif
 
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-navy-100 mb-6">
+                    <a href="{{ route('credit.index') }}" wire:navigate class="p-6 flex items-center justify-between gap-4 hover:bg-navy-50 transition-colors">
+                        <div class="flex items-center gap-4">
+                            <span class="flex items-center justify-center w-12 h-12 rounded-full bg-gold-50 text-gold-600 shrink-0">
+                                <span class="font-heading font-bold text-sm">{{ $trustScore?->score ?? 0 }}</span>
+                            </span>
+                            <div>
+                                <p class="font-heading font-semibold text-navy-900 text-sm">{{ ucfirst($trustScore?->tier ?? 'unrated') }} Tier</p>
+                                <p class="text-xs text-navy-400 mt-0.5">Procurement Trust Score &amp; Selbuildi Credit</p>
+                            </div>
+                        </div>
+                        <x-icon name="arrow-right" class="w-4 h-4 text-navy-300 shrink-0" />
+                    </a>
+                </div>
+
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-navy-100">
                     <div class="p-8">
                         <div class="flex items-center justify-between flex-wrap gap-3">

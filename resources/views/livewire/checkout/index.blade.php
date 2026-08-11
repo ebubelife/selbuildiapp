@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use App\Notifications\OrderPlaced;
 use App\Services\CartService;
+use App\Services\CreditService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -18,6 +19,8 @@ new #[Layout('components.layouts.site')] class extends Component
     public ?int $selectedAddressId = null;
 
     public ?int $selectedProjectId = null;
+
+    public string $paymentMethod = 'cash_on_delivery';
 
     public bool $showNewAddressForm = false;
 
@@ -83,7 +86,7 @@ new #[Layout('components.layouts.site')] class extends Component
         $this->country = 'Cameroon';
     }
 
-    public function placeOrder(): void
+    public function placeOrder(CreditService $creditService): void
     {
         $this->validate([
             'selectedAddressId' => ['required', 'exists:addresses,id'],
@@ -99,7 +102,12 @@ new #[Layout('components.layouts.site')] class extends Component
 
         $subtotal = $cart->subtotal();
 
-        $order = DB::transaction(function () use ($cart, $subtotal) {
+        $creditAccount = Auth::user()->creditAccount;
+        $useCredit = $this->paymentMethod === 'selbuildi_credit'
+            && $creditAccount?->isApproved()
+            && $creditAccount->available_credit >= $subtotal;
+
+        $order = DB::transaction(function () use ($cart, $subtotal, $useCredit) {
             $order = Order::create([
                 'order_number' => Order::generateOrderNumber(),
                 'user_id' => Auth::id(),
@@ -111,7 +119,7 @@ new #[Layout('components.layouts.site')] class extends Component
                 'total' => $subtotal,
                 'currency' => 'XAF',
                 'payment_status' => 'pending',
-                'payment_method' => 'cash_on_delivery',
+                'payment_method' => $useCredit ? 'selbuildi_credit' : 'cash_on_delivery',
                 'shipping_address_id' => $this->selectedAddressId,
                 'project_id' => $this->selectedProjectId,
                 'placed_at' => now(),
@@ -149,6 +157,10 @@ new #[Layout('components.layouts.site')] class extends Component
             return $order;
         });
 
+        if ($useCredit) {
+            $creditService->drawdown($creditAccount, $order);
+        }
+
         Auth::user()->notify(new OrderPlaced($order));
 
         $this->redirect(route('orders.show', $order), navigate: true);
@@ -158,11 +170,15 @@ new #[Layout('components.layouts.site')] class extends Component
     {
         $cart = app(CartService::class)->current()->load('items.product.category', 'items.product.supplierProfile', 'items.productVariant');
 
+        $creditAccount = Auth::user()->creditAccount;
+
         return [
             'cart' => $cart,
             'itemsBySupplier' => $cart->itemsBySupplier(),
             'addresses' => Auth::user()->addresses,
             'projects' => Auth::user()->isContractor() ? Auth::user()->projects()->where('status', 'active')->get() : collect(),
+            'creditAccount' => $creditAccount,
+            'creditUsableForOrder' => $creditAccount?->isApproved() && $creditAccount->available_credit >= $cart->subtotal(),
         ];
     }
 }; ?>
@@ -354,13 +370,44 @@ new #[Layout('components.layouts.site')] class extends Component
                                 </div>
                             @endif
 
-                            <div class="mt-4 p-4 rounded-xl bg-navy-50 border border-navy-100">
-                                <p class="text-xs font-semibold text-navy-500 uppercase tracking-wide mb-1">Payment method</p>
-                                <p class="font-semibold text-navy-900 text-sm flex items-center gap-2">
-                                    <x-icon name="wallet" class="w-4 h-4" />
-                                    Cash / Pay on Delivery
-                                </p>
-                                <p class="text-xs text-navy-400 mt-1">Pay when your materials arrive. Online payment options are coming soon.</p>
+                            <div class="mt-4">
+                                <p class="text-xs font-semibold text-navy-500 uppercase tracking-wide mb-2">Payment method</p>
+
+                                <div class="space-y-2">
+                                    <button
+                                        type="button"
+                                        wire:click="$set('paymentMethod', 'cash_on_delivery')"
+                                        @class([
+                                            'w-full text-left p-4 rounded-xl border-2 transition-colors duration-150 flex items-start gap-3',
+                                            'border-gold-500 bg-gold-50' => $paymentMethod === 'cash_on_delivery',
+                                            'border-navy-100 hover:border-navy-300' => $paymentMethod !== 'cash_on_delivery',
+                                        ])
+                                    >
+                                        <x-icon name="wallet" class="w-4 h-4 mt-0.5 shrink-0" />
+                                        <span>
+                                            <span class="font-semibold text-navy-900 text-sm block">Cash / Pay on Delivery</span>
+                                            <span class="text-xs text-navy-400">Pay when your materials arrive.</span>
+                                        </span>
+                                    </button>
+
+                                    @if ($creditUsableForOrder)
+                                        <button
+                                            type="button"
+                                            wire:click="$set('paymentMethod', 'selbuildi_credit')"
+                                            @class([
+                                                'w-full text-left p-4 rounded-xl border-2 transition-colors duration-150 flex items-start gap-3',
+                                                'border-gold-500 bg-gold-50' => $paymentMethod === 'selbuildi_credit',
+                                                'border-navy-100 hover:border-navy-300' => $paymentMethod !== 'selbuildi_credit',
+                                            ])
+                                        >
+                                            <x-icon name="star" class="w-4 h-4 mt-0.5 shrink-0" />
+                                            <span>
+                                                <span class="font-semibold text-navy-900 text-sm block">Pay with Selbuildi Credit</span>
+                                                <span class="text-xs text-navy-400">{{ number_format($creditAccount->available_credit) }} XAF available. Repay by the due date shown on your order.</span>
+                                            </span>
+                                        </button>
+                                    @endif
+                                </div>
                             </div>
 
                             <div class="mt-6 flex items-center gap-3">

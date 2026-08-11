@@ -118,7 +118,7 @@ new #[Layout('components.layouts.site')] class extends Component
                         <x-icon name="wallet" class="w-4 h-4" />
                         Payment
                     </h3>
-                    <p class="mt-2 text-sm text-navy-600">Cash / Pay on Delivery</p>
+                    <p class="mt-2 text-sm text-navy-600">{{ $order->payment_method === 'selbuildi_credit' ? 'Selbuildi Credit' : 'Cash / Pay on Delivery' }}</p>
                     <p class="text-xs text-navy-400 mt-1">Status: {{ ucfirst($order->payment_status) }}</p>
                 </div>
             </div>

@@ -59,6 +59,21 @@ class User extends Authenticatable
         return $this->morphMany(Address::class, 'addressable');
     }
 
+    public function trustScore(): HasOne
+    {
+        return $this->hasOne(ProcurementTrustScore::class);
+    }
+
+    public function trustScoreEvents(): HasMany
+    {
+        return $this->hasMany(TrustScoreEvent::class);
+    }
+
+    public function creditAccount(): HasOne
+    {
+        return $this->hasOne(CreditAccount::class);
+    }
+
     public function isSupplier(): bool
     {
         return $this->role === 'supplier';

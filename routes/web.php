@@ -30,6 +30,7 @@ Route::middleware('auth')->group(function () {
     Volt::route('orders/{order}', 'orders.show')->name('orders.show');
     Volt::route('projects', 'projects.index')->name('projects.index');
     Volt::route('projects/{project}', 'projects.show')->name('projects.show');
+    Volt::route('credit', 'credit.index')->name('credit.index');
 });
 
 Route::get('dashboard', function () {
@@ -44,6 +45,7 @@ Route::get('dashboard', function () {
             ? $user->projects()->withCount('orders')->latest()->limit(3)->get()
             : collect(),
         'projectCount' => $user->isContractor() ? $user->projects()->count() : 0,
+        'trustScore' => ! $user->isSupplier() ? $user->trustScore : null,
     ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
