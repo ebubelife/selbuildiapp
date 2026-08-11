@@ -11,9 +11,9 @@
             <div>
                 <h3 class="font-heading font-semibold text-white text-sm uppercase tracking-wide">Shop</h3>
                 <ul class="mt-4 space-y-3 text-sm">
-                    <li><a href="#categories" class="hover:text-gold-500 transition-colors">Categories</a></li>
-                    <li><a href="#" class="hover:text-gold-500 transition-colors">Featured Materials</a></li>
-                    <li><a href="#trust-credit" class="hover:text-gold-500 transition-colors">Procurement Credit</a></li>
+                    <li><a href="{{ route('shop.index') }}" wire:navigate class="hover:text-gold-500 transition-colors">Categories</a></li>
+                    <li><a href="{{ route('shop.index') }}" wire:navigate class="hover:text-gold-500 transition-colors">Featured Materials</a></li>
+                    <li><a href="{{ route('home') }}#trust-credit" class="hover:text-gold-500 transition-colors">Procurement Credit</a></li>
                 </ul>
             </div>
 

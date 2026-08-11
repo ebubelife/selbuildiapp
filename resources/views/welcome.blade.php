@@ -106,20 +106,13 @@
             </x-reveal>
 
             <div class="mt-14 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5">
-                @foreach ([
-                    ['icon' => 'cement', 'name' => 'Cement'],
-                    ['icon' => 'steel', 'name' => 'Steel & Rebar'],
-                    ['icon' => 'roofing', 'name' => 'Roofing'],
-                    ['icon' => 'tiles', 'name' => 'Tiles'],
-                    ['icon' => 'blocks', 'name' => 'Blocks'],
-                    ['icon' => 'tools', 'name' => 'Tools'],
-                ] as $i => $category)
+                @foreach ($categories as $i => $category)
                     <x-reveal :delay="$i * 60">
-                        <a href="#" class="group flex flex-col items-center text-center gap-3 p-6 rounded-2xl border border-navy-100 hover:border-gold-500 hover:shadow-brand hover:-translate-y-1 transition-all duration-300">
+                        <a href="{{ route('shop.index', ['category' => $category->id]) }}" wire:navigate class="group flex flex-col items-center text-center gap-3 p-6 rounded-2xl border border-navy-100 hover:border-gold-500 hover:shadow-brand hover:-translate-y-1 transition-all duration-300">
                             <span class="flex items-center justify-center w-14 h-14 rounded-xl bg-navy-50 text-navy-700 group-hover:bg-gold-500 group-hover:text-navy-900 transition-colors duration-300">
-                                <x-icon :name="$category['icon']" class="w-7 h-7" />
+                                <x-icon :name="$category->icon ?? 'cart'" class="w-7 h-7" />
                             </span>
-                            <span class="text-sm font-semibold text-navy-800">{{ $category['name'] }}</span>
+                            <span class="text-sm font-semibold text-navy-800">{{ $category->name }}</span>
                         </a>
                     </x-reveal>
                 @endforeach
@@ -135,34 +128,29 @@
                     <span class="text-sm font-semibold text-gold-600 uppercase tracking-wide">Featured Materials</span>
                     <h2 class="mt-3 font-heading text-3xl sm:text-4xl font-bold text-navy-900">Popular this week</h2>
                 </x-reveal>
-                <a href="#" class="hidden sm:inline-flex items-center gap-1 text-navy-700 font-semibold hover:text-gold-600 transition-colors shrink-0">
+                <a href="{{ route('shop.index') }}" wire:navigate class="hidden sm:inline-flex items-center gap-1 text-navy-700 font-semibold hover:text-gold-600 transition-colors shrink-0">
                     View all <x-icon name="arrow-right" class="w-4 h-4" />
                 </a>
             </div>
 
             <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                @foreach ([
-                    ['name' => 'Dangote Cement 50kg', 'unit' => 'per bag', 'price' => '4,800', 'icon' => 'cement'],
-                    ['name' => 'Reinforcement Steel Y12', 'unit' => 'per length', 'price' => '6,200', 'icon' => 'steel'],
-                    ['name' => 'Aluminium Roofing Sheet', 'unit' => 'per sheet', 'price' => '9,500', 'icon' => 'roofing'],
-                    ['name' => 'Ceramic Floor Tile 60x60', 'unit' => 'per m²', 'price' => '3,100', 'icon' => 'tiles'],
-                ] as $i => $product)
+                @foreach ($featuredProducts as $i => $product)
                     <x-reveal :delay="$i * 80">
-                        <div class="group bg-white rounded-2xl border border-navy-100 overflow-hidden hover:shadow-brand hover:-translate-y-1 transition-all duration-300">
+                        <a href="{{ route('shop.show', $product) }}" wire:navigate class="group block bg-white rounded-2xl border border-navy-100 overflow-hidden hover:shadow-brand hover:-translate-y-1 transition-all duration-300">
                             <div class="aspect-square bg-navy-50 flex items-center justify-center relative overflow-hidden">
-                                <x-icon :name="$product['icon']" class="w-16 h-16 text-navy-300 group-hover:scale-110 group-hover:text-gold-500 transition-all duration-300" stroke-width="1.2" />
+                                <x-icon :name="$product->category->icon ?? 'cart'" class="w-16 h-16 text-navy-300 group-hover:scale-110 group-hover:text-gold-500 transition-all duration-300" stroke-width="1.2" />
                             </div>
                             <div class="p-5">
-                                <h3 class="font-semibold text-navy-900 text-sm">{{ $product['name'] }}</h3>
-                                <p class="text-xs text-navy-400 mt-1">{{ $product['unit'] }}</p>
+                                <h3 class="font-semibold text-navy-900 text-sm">{{ $product->name }}</h3>
+                                <p class="text-xs text-navy-400 mt-1">per {{ $product->unit }}</p>
                                 <div class="mt-3 flex items-center justify-between">
-                                    <span class="font-heading font-bold text-navy-900">{{ $product['price'] }} <span class="text-xs font-normal text-navy-400">XAF</span></span>
-                                    <button type="button" class="flex items-center justify-center w-9 h-9 rounded-full bg-gold-500 text-navy-900 hover:bg-gold-600 hover:scale-110 transition-all duration-150">
+                                    <span class="font-heading font-bold text-navy-900">{{ number_format($product->price) }} <span class="text-xs font-normal text-navy-400">XAF</span></span>
+                                    <span class="flex items-center justify-center w-9 h-9 rounded-full bg-gold-500 text-navy-900 group-hover:bg-gold-600 group-hover:scale-110 transition-all duration-150">
                                         <x-icon name="cart" class="w-4 h-4" />
-                                    </button>
+                                    </span>
                                 </div>
                             </div>
-                        </div>
+                        </a>
                     </x-reveal>
                 @endforeach
             </div>

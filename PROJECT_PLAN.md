@@ -45,7 +45,7 @@ MVP focus: a customer can browse materials, buy them, pay, and track delivery to
 | **Admin** | Platform operator | Phase 5: verification queue, catalog moderation, order oversight, trust score/credit approval |
 | **Financial Partner** *(future)* | External institution consuming trust-score data to extend real financing | Post-launch: read/API access only |
 
-Implementation: `spatie/laravel-permission` for roles, with `users.role` as the primary discriminator (customer / contractor / supplier / admin) plus fine-grained permissions layered on top for admin sub-roles later. Contractor is not a separate table — it's a `users` row with `role = contractor` and an optional `contractor_profile`.
+**Implemented**: `users.role` enum (`customer|contractor|supplier|admin`, default `customer`) as the primary discriminator — plain column, not `spatie/laravel-permission` (skipped for now; nothing yet needs fine-grained permission matrices beyond the four-way role check, `$user->isSupplier()`/`isAdmin()` helpers cover it). Worth revisiting once Phase 5's admin panel needs finer-grained permissions. Supplier signup creates a linked `supplier_profiles` row (`verified_at` null until an admin approves it — dashboard already shows a "verification pending" state; the actual admin approval UI is still Phase 5). Contractor is not a separate table — it's a `users` row with `role = contractor` and would get an optional `contractor_profile` when Phase 5 builds it out.
 
 ---
 
@@ -282,7 +282,7 @@ To make this work, two files are environment-aware (safe for both local dev and 
 
 - **Phase 0 — Foundation** ✅ *(done)*: Laravel + MySQL + Breeze (Livewire) auth, base project structure.
 - **Phase 1 — Design System & Landing** ✅ *(done)*: Tailwind theme with brand colors/fonts, component library, animated landing page, updated auth screens, responsive nav/footer.
-- **Phase 2 — Catalog & Browsing** *(next up)*: categories, products, product detail page, search & filters, public supplier profiles.
+- **Phase 2 — Catalog & Browsing** ✅ *(done)*: `users.role` + `supplier_profiles` (verification-pending state built in, not yet an admin approval UI — that's Phase 5), full catalog schema (`categories`, `brands`, `products`, `product_images`, `product_variants`, `warehouses`, `inventories`), seeded with 6 categories / 4 suppliers / 12 products. Shop browsing page (search, category pills, sort, pagination), product detail page, public supplier profile page — all wired to real data, landing page's category/featured sections pull from the DB now instead of hardcoded arrays. Register got a tabbed Customer/Supplier flow (different fields per tab, animated via `@entangle`); login got a matching cosmetic tab treatment. *(Cart is still Phase 3 — "Add to Cart" on product pages is not yet wired up.)*
 - **Phase 3 — Cart & Checkout**: cart drawer, multi-supplier cart, addresses, checkout flow, first payment integration, order confirmation.
 - **Phase 4 — Order Tracking & Notifications**: status timeline, shipment events, email/SMS notifications, order history.
 - **Phase 5 — Roles Expansion**: contractor projects, supplier dashboard, Filament admin panel.

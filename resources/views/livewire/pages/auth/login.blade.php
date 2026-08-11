@@ -24,9 +24,36 @@ new #[Layout('layouts.guest')] class extends Component
     }
 }; ?>
 
-<div>
-    <h1 class="font-heading text-2xl font-bold text-navy-900">Welcome back</h1>
-    <p class="mt-1 text-sm text-navy-500">Log in to track orders and manage your account.</p>
+<div x-data="{ tab: 'customer' }">
+    <h1 class="font-heading text-2xl font-bold text-navy-900" x-text="tab === 'supplier' ? 'Supplier login' : 'Welcome back'"></h1>
+    <p class="mt-1 text-sm text-navy-500" x-text="tab === 'supplier' ? 'Log in to manage your listings and orders.' : 'Log in to track orders and manage your account.'"></p>
+
+    <!-- Account type tabs (cosmetic - same login form either way) -->
+    <div class="mt-6 relative grid grid-cols-2 gap-1 rounded-xl bg-navy-50 p-1">
+        <div
+            class="absolute inset-y-1 w-[calc(50%-0.125rem)] rounded-lg bg-white shadow-sm transition-transform duration-300 ease-out"
+            :class="tab === 'supplier' ? 'translate-x-[calc(100%+0.25rem)]' : 'translate-x-0'"
+        ></div>
+
+        <button
+            type="button"
+            @click="tab = 'customer'"
+            class="relative z-10 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors duration-200"
+            :class="tab === 'customer' ? 'text-navy-900' : 'text-navy-400 hover:text-navy-600'"
+        >
+            <x-icon name="cart" class="w-4 h-4" />
+            Customer
+        </button>
+        <button
+            type="button"
+            @click="tab = 'supplier'"
+            class="relative z-10 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors duration-200"
+            :class="tab === 'supplier' ? 'text-navy-900' : 'text-navy-400 hover:text-navy-600'"
+        >
+            <x-icon name="shield" class="w-4 h-4" />
+            Supplier
+        </button>
+    </div>
 
     <!-- Session Status -->
     <x-auth-session-status class="mt-6" :status="session('status')" />

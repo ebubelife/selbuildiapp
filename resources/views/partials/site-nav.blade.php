@@ -16,7 +16,7 @@
             </a>
 
             <div class="hidden lg:flex items-center gap-10">
-                <a href="#categories" :class="scrolled ? 'text-navy-700 hover:text-gold-600' : 'text-white/90 hover:text-white'" class="text-sm font-medium transition-colors">Shop Materials</a>
+                <a href="{{ route('shop.index') }}" wire:navigate :class="scrolled ? 'text-navy-700 hover:text-gold-600' : 'text-white/90 hover:text-white'" class="text-sm font-medium transition-colors">Shop Materials</a>
                 <a href="#how-it-works" :class="scrolled ? 'text-navy-700 hover:text-gold-600' : 'text-white/90 hover:text-white'" class="text-sm font-medium transition-colors">How it Works</a>
                 <a href="#trust-credit" :class="scrolled ? 'text-navy-700 hover:text-gold-600' : 'text-white/90 hover:text-white'" class="text-sm font-medium transition-colors">Credit &amp; Trust</a>
                 <a href="#suppliers" :class="scrolled ? 'text-navy-700 hover:text-gold-600' : 'text-white/90 hover:text-white'" class="text-sm font-medium transition-colors">Suppliers</a>
@@ -60,7 +60,7 @@
         @click.outside="mobileOpen = false"
     >
         <div class="px-6 py-6 space-y-4">
-            <a href="#categories" @click="mobileOpen = false" class="block text-navy-700 font-medium">Shop Materials</a>
+            <a href="{{ route('shop.index') }}" wire:navigate @click="mobileOpen = false" class="block text-navy-700 font-medium">Shop Materials</a>
             <a href="#how-it-works" @click="mobileOpen = false" class="block text-navy-700 font-medium">How it Works</a>
             <a href="#trust-credit" @click="mobileOpen = false" class="block text-navy-700 font-medium">Credit &amp; Trust</a>
             <a href="#suppliers" @click="mobileOpen = false" class="block text-navy-700 font-medium">Suppliers</a>

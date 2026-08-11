@@ -32,5 +32,44 @@ class RegistrationTest extends TestCase
         $component->assertRedirect(route('dashboard', absolute: false));
 
         $this->assertAuthenticated();
+        $this->assertSame('customer', auth()->user()->role);
+    }
+
+    public function test_new_suppliers_can_register_with_a_pending_supplier_profile(): void
+    {
+        $component = Volt::test('pages.auth.register')
+            ->set('role', 'supplier')
+            ->set('name', 'Test Supplier')
+            ->set('business_name', 'Test Building Supplies')
+            ->set('email', 'supplier@example.com')
+            ->set('password', 'password')
+            ->set('password_confirmation', 'password');
+
+        $component->call('register');
+
+        $component->assertRedirect(route('dashboard', absolute: false));
+
+        $this->assertAuthenticated();
+
+        $user = auth()->user();
+        $this->assertSame('supplier', $user->role);
+        $this->assertNotNull($user->supplierProfile);
+        $this->assertSame('Test Building Supplies', $user->supplierProfile->business_name);
+        $this->assertFalse($user->supplierProfile->isVerified());
+    }
+
+    public function test_supplier_registration_requires_a_business_name(): void
+    {
+        $component = Volt::test('pages.auth.register')
+            ->set('role', 'supplier')
+            ->set('name', 'Test Supplier')
+            ->set('email', 'supplier@example.com')
+            ->set('password', 'password')
+            ->set('password_confirmation', 'password');
+
+        $component->call('register');
+
+        $component->assertHasErrors(['business_name' => 'required']);
+        $this->assertGuest();
     }
 }
