@@ -26,7 +26,7 @@ new #[Layout('layouts.guest')] class extends Component
     public function register(): void
     {
         $rules = [
-            'role' => ['required', 'in:customer,supplier'],
+            'role' => ['required', 'in:customer,contractor,supplier'],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
@@ -72,29 +72,45 @@ new #[Layout('layouts.guest')] class extends Component
     <p class="mt-1 text-sm text-navy-500">Start sourcing building materials from verified suppliers.</p>
 
     <!-- Account type tabs -->
-    <div class="mt-6 relative grid grid-cols-2 gap-1 rounded-xl bg-navy-50 p-1">
+    <div class="mt-6 relative grid grid-cols-3 gap-1 rounded-xl bg-navy-50 p-1">
         <div
-            class="absolute inset-y-1 w-[calc(50%-0.125rem)] rounded-lg bg-white shadow-sm transition-transform duration-300 ease-out"
-            :class="role === 'supplier' ? 'translate-x-[calc(100%+0.25rem)]' : 'translate-x-0'"
+            class="absolute inset-y-1 w-[calc(33.333%-0.167rem)] rounded-lg bg-white shadow-sm transition-transform duration-300 ease-out"
+            :class="{
+                'translate-x-0': role === 'customer',
+                'translate-x-[calc(100%+0.25rem)]': role === 'contractor',
+                'translate-x-[calc(200%+0.5rem)]': role === 'supplier',
+            }"
         ></div>
 
         <button
             type="button"
             @click="role = 'customer'"
-            class="relative z-10 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors duration-200"
+            aria-label="Customer"
+            class="relative z-10 flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-semibold transition-colors duration-200"
             :class="role === 'customer' ? 'text-navy-900' : 'text-navy-400 hover:text-navy-600'"
         >
             <x-icon name="cart" class="w-4 h-4" />
-            Customer
+            <span class="hidden sm:inline">Customer</span>
+        </button>
+        <button
+            type="button"
+            @click="role = 'contractor'"
+            aria-label="Contractor"
+            class="relative z-10 flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-semibold transition-colors duration-200"
+            :class="role === 'contractor' ? 'text-navy-900' : 'text-navy-400 hover:text-navy-600'"
+        >
+            <x-icon name="tools" class="w-4 h-4" />
+            <span class="hidden sm:inline">Contractor</span>
         </button>
         <button
             type="button"
             @click="role = 'supplier'"
-            class="relative z-10 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors duration-200"
+            aria-label="Supplier"
+            class="relative z-10 flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-semibold transition-colors duration-200"
             :class="role === 'supplier' ? 'text-navy-900' : 'text-navy-400 hover:text-navy-600'"
         >
             <x-icon name="shield" class="w-4 h-4" />
-            Supplier
+            <span class="hidden sm:inline">Supplier</span>
         </button>
     </div>
 
@@ -107,6 +123,17 @@ new #[Layout('layouts.guest')] class extends Component
         x-cloak
     >
         Supplier accounts go through a short verification step before you can list materials.
+    </p>
+
+    <p
+        x-show="role === 'contractor'"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 -translate-y-1"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        class="mt-3 text-xs text-navy-500 bg-gold-50 border border-gold-100 rounded-lg px-3 py-2"
+        x-cloak
+    >
+        Contractor accounts can group orders into Projects to track spend per build.
     </p>
 
     <form wire:submit="register" class="mt-6 {{ $errors->any() ? 'animate-shake' : '' }}">
@@ -166,7 +193,11 @@ new #[Layout('layouts.guest')] class extends Component
 
         <div class="mt-6">
             <x-primary-button class="w-full justify-center py-3" wire:loading.attr="disabled" wire:target="register">
-                <span wire:loading.remove wire:target="register" x-text="role === 'supplier' ? 'Create Supplier Account' : 'Create Account'"></span>
+                <span wire:loading.remove wire:target="register" x-text="{
+                    customer: 'Create Account',
+                    contractor: 'Create Contractor Account',
+                    supplier: 'Create Supplier Account',
+                }[role]"></span>
                 <span wire:loading wire:target="register">{{ __('Creating account...') }}</span>
             </x-primary-button>
         </div>

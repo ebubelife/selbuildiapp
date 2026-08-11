@@ -38,6 +38,11 @@ new class extends Component
                             {{ __('My Orders') }}
                         </x-nav-link>
                     @endunless
+                    @if (auth()->user()->isContractor())
+                        <x-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.*')" wire:navigate>
+                            {{ __('My Projects') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -94,6 +99,11 @@ new class extends Component
                     {{ __('My Orders') }}
                 </x-responsive-nav-link>
             @endunless
+            @if (auth()->user()->isContractor())
+                <x-responsive-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.*')" wire:navigate>
+                    {{ __('My Projects') }}
+                </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->

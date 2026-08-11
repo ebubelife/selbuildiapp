@@ -58,6 +58,27 @@ class RegistrationTest extends TestCase
         $this->assertFalse($user->supplierProfile->isVerified());
     }
 
+    public function test_new_contractors_can_register_without_a_business_name(): void
+    {
+        $component = Volt::test('pages.auth.register')
+            ->set('role', 'contractor')
+            ->set('name', 'Test Contractor')
+            ->set('email', 'contractor@example.com')
+            ->set('password', 'password')
+            ->set('password_confirmation', 'password');
+
+        $component->call('register');
+
+        $component->assertRedirect(route('dashboard', absolute: false));
+
+        $this->assertAuthenticated();
+
+        $user = auth()->user();
+        $this->assertSame('contractor', $user->role);
+        $this->assertTrue($user->isContractor());
+        $this->assertNull($user->supplierProfile);
+    }
+
     public function test_supplier_registration_requires_a_business_name(): void
     {
         $component = Volt::test('pages.auth.register')

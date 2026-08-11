@@ -28,6 +28,8 @@ Route::middleware('auth')->group(function () {
     Volt::route('checkout', 'checkout.index')->name('checkout.index');
     Volt::route('orders', 'orders.index')->name('orders.index');
     Volt::route('orders/{order}', 'orders.show')->name('orders.show');
+    Volt::route('projects', 'projects.index')->name('projects.index');
+    Volt::route('projects/{project}', 'projects.show')->name('projects.show');
 });
 
 Route::get('dashboard', function () {
@@ -38,6 +40,10 @@ Route::get('dashboard', function () {
             ? collect()
             : $user->orders()->latest('placed_at')->limit(5)->get(),
         'orderCount' => $user->isSupplier() ? 0 : $user->orders()->count(),
+        'recentProjects' => $user->isContractor()
+            ? $user->projects()->withCount('orders')->latest()->limit(3)->get()
+            : collect(),
+        'projectCount' => $user->isContractor() ? $user->projects()->count() : 0,
     ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 

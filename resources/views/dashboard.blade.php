@@ -35,6 +35,46 @@
                     </div>
                 </div>
             @else
+                @if (auth()->user()->isContractor())
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-navy-100 mb-6">
+                        <div class="p-8">
+                            <div class="flex items-center justify-between flex-wrap gap-3">
+                                <h3 class="font-heading text-lg font-semibold text-navy-900">Your Projects</h3>
+                                <a href="{{ route('projects.index') }}" wire:navigate class="text-sm font-semibold text-navy-700 hover:text-gold-600 transition-colors flex items-center gap-1">
+                                    {{ $projectCount > 0 ? 'View all projects' : 'Create a project' }}
+                                    <x-icon name="arrow-right" class="w-4 h-4" />
+                                </a>
+                            </div>
+
+                            @if ($recentProjects->isEmpty())
+                                <p class="mt-2 text-sm text-navy-500 leading-relaxed max-w-2xl">
+                                    Group your orders into a Project to track spend per build against a budget.
+                                </p>
+                            @else
+                                <ul class="mt-6 divide-y divide-navy-100 border border-navy-100 rounded-xl overflow-hidden">
+                                    @foreach ($recentProjects as $project)
+                                        <li>
+                                            <a href="{{ route('projects.show', $project) }}" wire:navigate class="flex items-center justify-between gap-4 p-4 hover:bg-navy-50 transition-colors">
+                                                <div>
+                                                    <p class="font-semibold text-navy-900 text-sm">{{ $project->name }}</p>
+                                                    <p class="text-xs text-navy-400 mt-0.5">{{ $project->orders_count }} {{ Str::plural('order', $project->orders_count) }}</p>
+                                                </div>
+                                                <span @class([
+                                                    'text-xs font-semibold px-3 py-1 rounded-full',
+                                                    'bg-green-100 text-green-700' => $project->status === 'active',
+                                                    'bg-navy-100 text-navy-600' => $project->status !== 'active',
+                                                ])>
+                                                    {{ ucfirst($project->status) }}
+                                                </span>
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-navy-100">
                     <div class="p-8">
                         <div class="flex items-center justify-between flex-wrap gap-3">

@@ -17,6 +17,8 @@ new #[Layout('components.layouts.site')] class extends Component
 
     public ?int $selectedAddressId = null;
 
+    public ?int $selectedProjectId = null;
+
     public bool $showNewAddressForm = false;
 
     public string $recipient_name = '';
@@ -111,6 +113,7 @@ new #[Layout('components.layouts.site')] class extends Component
                 'payment_status' => 'pending',
                 'payment_method' => 'cash_on_delivery',
                 'shipping_address_id' => $this->selectedAddressId,
+                'project_id' => $this->selectedProjectId,
                 'placed_at' => now(),
             ]);
 
@@ -159,6 +162,7 @@ new #[Layout('components.layouts.site')] class extends Component
             'cart' => $cart,
             'itemsBySupplier' => $cart->itemsBySupplier(),
             'addresses' => Auth::user()->addresses,
+            'projects' => Auth::user()->isContractor() ? Auth::user()->projects()->where('status', 'active')->get() : collect(),
         ];
     }
 }; ?>
@@ -335,6 +339,18 @@ new #[Layout('components.layouts.site')] class extends Component
                                     <p class="text-xs font-semibold text-navy-500 uppercase tracking-wide mb-1">Delivering to</p>
                                     <p class="font-semibold text-navy-900 text-sm">{{ $selected->recipient_name }} &middot; {{ $selected->phone }}</p>
                                     <p class="text-sm text-navy-600 mt-1">{{ $selected->street }}, {{ $selected->city }}, {{ $selected->country }}</p>
+                                </div>
+                            @endif
+
+                            @if ($projects->isNotEmpty())
+                                <div class="mt-4">
+                                    <x-input-label for="selectedProjectId" value="Link to a project (optional)" />
+                                    <select wire:model="selectedProjectId" id="selectedProjectId" class="mt-1 block w-full rounded-lg border-navy-200 focus:border-gold-500 focus:ring-gold-500 text-sm">
+                                        <option value="">Not linked to a project</option>
+                                        @foreach ($projects as $project)
+                                            <option value="{{ $project->id }}">{{ $project->name }}</option>
+                                        @endforeach
+                                    </select>
                                 </div>
                             @endif
 
