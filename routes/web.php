@@ -24,6 +24,11 @@ Volt::route('shop', 'shop.index')->name('shop.index');
 Volt::route('shop/{product:slug}', 'shop.show')->name('shop.show');
 Volt::route('suppliers/{supplier:slug}', 'suppliers.show')->name('suppliers.show');
 
+Route::middleware('auth')->group(function () {
+    Volt::route('checkout', 'checkout.index')->name('checkout.index');
+    Volt::route('orders/{order}', 'orders.show')->name('orders.show');
+});
+
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');

@@ -1,6 +1,8 @@
 <?php
 
 use App\Livewire\Forms\LoginForm;
+use App\Services\CartService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -16,7 +18,14 @@ new #[Layout('layouts.guest')] class extends Component
     {
         $this->validate();
 
+        // Auth::attempt() below regenerates the session ID internally
+        // (SessionGuard::updateSession()) as soon as it succeeds, so the
+        // guest session ID has to be captured before it runs, not after.
+        $guestSessionId = Session::getId();
+
         $this->form->authenticate();
+
+        app(CartService::class)->mergeSessionCartInto(Auth::user(), $guestSessionId);
 
         Session::regenerate();
 

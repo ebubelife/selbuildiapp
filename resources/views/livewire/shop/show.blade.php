@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Product;
+use App\Services\CartService;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -8,6 +9,7 @@ new #[Layout('components.layouts.site')] class extends Component
 {
     public Product $product;
     public int $quantity = 1;
+    public bool $justAdded = false;
 
     public function mount(Product $product): void
     {
@@ -23,6 +25,14 @@ new #[Layout('components.layouts.site')] class extends Component
     public function decrement(): void
     {
         $this->quantity = max($this->product->min_order_qty, $this->quantity - 1);
+    }
+
+    public function addToCart(): void
+    {
+        app(CartService::class)->add($this->product, $this->quantity);
+
+        $this->justAdded = true;
+        $this->dispatch('cart-updated');
     }
 
     public function with(): array
@@ -98,11 +108,30 @@ new #[Layout('components.layouts.site')] class extends Component
                             <button type="button" wire:click="increment" class="w-10 h-10 flex items-center justify-center text-navy-500 hover:text-navy-900 transition-colors">&plus;</button>
                         </div>
 
-                        <x-primary-button class="flex-1 justify-center py-3">
-                            <x-icon name="cart" class="w-4 h-4" />
-                            Add to Cart
+                        <x-primary-button
+                            class="flex-1 justify-center py-3"
+                            wire:click="addToCart"
+                            wire:loading.attr="disabled"
+                            wire:target="addToCart"
+                        >
+                            <span wire:loading.remove wire:target="addToCart" class="flex items-center gap-2">
+                                <x-icon :name="$justAdded ? 'check' : 'cart'" class="w-4 h-4" />
+                                {{ $justAdded ? 'Added to Cart' : 'Add to Cart' }}
+                            </span>
+                            <span wire:loading wire:target="addToCart">Adding...</span>
                         </x-primary-button>
                     </div>
+
+                    @if ($justAdded)
+                        <p
+                            x-data
+                            x-init="setTimeout(() => $wire.justAdded = false, 2500)"
+                            class="mt-3 text-sm text-green-600 flex items-center gap-1.5 animate-fade-in"
+                        >
+                            <x-icon name="check" class="w-4 h-4" stroke-width="2.5" />
+                            Added {{ $quantity }} {{ str($product->unit)->plural($quantity) }} to your cart.
+                        </p>
+                    @endif
 
                     <div class="mt-8 grid grid-cols-2 gap-4">
                         <div class="flex items-center gap-3 text-sm text-navy-600">

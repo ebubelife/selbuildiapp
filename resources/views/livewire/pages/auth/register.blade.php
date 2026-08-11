@@ -1,9 +1,11 @@
 <?php
 
 use App\Models\User;
+use App\Services\CartService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Livewire\Attributes\Layout;
@@ -36,6 +38,11 @@ new #[Layout('layouts.guest')] class extends Component
 
         $validated = $this->validate($rules);
 
+        // Auth::login() below regenerates the session ID internally
+        // (SessionGuard::updateSession()) as soon as it runs, so the guest
+        // session ID has to be captured before it runs, not after.
+        $guestSessionId = Session::getId();
+
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
@@ -53,6 +60,8 @@ new #[Layout('layouts.guest')] class extends Component
         event(new Registered($user));
 
         Auth::login($user);
+
+        app(CartService::class)->mergeSessionCartInto($user, $guestSessionId);
 
         $this->redirect(route('dashboard', absolute: false), navigate: true);
     }

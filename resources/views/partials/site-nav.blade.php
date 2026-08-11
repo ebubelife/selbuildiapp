@@ -23,6 +23,8 @@
             </div>
 
             <div class="hidden lg:flex items-center gap-3">
+                <livewire:cart-widget />
+
                 @auth
                     <a href="{{ route('dashboard') }}" wire:navigate>
                         <x-primary-button>Dashboard</x-primary-button>
@@ -35,15 +37,19 @@
                 @endauth
             </div>
 
-            <button
-                @click="mobileOpen = !mobileOpen"
-                :class="scrolled ? 'text-navy-700' : 'text-white'"
-                class="lg:hidden p-2"
-                aria-label="Toggle menu"
-            >
-                <x-icon :name="'menu'" x-show="!mobileOpen" class="w-7 h-7" />
-                <x-icon :name="'close'" x-show="mobileOpen" x-cloak class="w-7 h-7" />
-            </button>
+            <div class="flex items-center gap-1 lg:hidden">
+                <livewire:cart-widget />
+
+                <button
+                    @click="mobileOpen = !mobileOpen"
+                    :class="scrolled ? 'text-navy-700' : 'text-white'"
+                    class="p-2"
+                    aria-label="Toggle menu"
+                >
+                    <x-icon :name="'menu'" x-show="!mobileOpen" class="w-7 h-7" />
+                    <x-icon :name="'close'" x-show="mobileOpen" x-cloak class="w-7 h-7" />
+                </button>
+            </div>
         </div>
     </nav>
 

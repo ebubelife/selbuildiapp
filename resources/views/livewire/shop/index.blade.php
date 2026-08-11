@@ -2,6 +2,7 @@
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\CartService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
@@ -10,6 +11,8 @@ use Livewire\WithPagination;
 new #[Layout('components.layouts.site')] class extends Component
 {
     use WithPagination;
+
+    public ?int $justAdded = null;
 
     #[Url(history: true)]
     public string $search = '';
@@ -34,6 +37,16 @@ new #[Layout('components.layouts.site')] class extends Component
     public function updatedSort(): void
     {
         $this->resetPage();
+    }
+
+    public function addToCart(int $productId): void
+    {
+        $product = Product::findOrFail($productId);
+
+        app(CartService::class)->add($product, max(1, $product->min_order_qty));
+
+        $this->justAdded = $productId;
+        $this->dispatch('cart-updated');
     }
 
     public function with(): array
@@ -147,30 +160,40 @@ new #[Layout('components.layouts.site')] class extends Component
                 @else
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         @foreach ($products as $product)
-                            <a
-                                href="{{ route('shop.show', $product) }}"
-                                wire:navigate
+                            <div
                                 wire:key="product-{{ $product->id }}"
                                 class="group bg-white rounded-2xl border border-navy-100 overflow-hidden hover:shadow-brand hover:-translate-y-1 transition-all duration-300"
                             >
-                                <div class="aspect-square bg-navy-50 flex items-center justify-center relative overflow-hidden">
-                                    <x-icon :name="$product->category->icon ?? 'cart'" class="w-16 h-16 text-navy-300 group-hover:scale-110 group-hover:text-gold-500 transition-all duration-300" stroke-width="1.2" />
-                                    @if ($product->is_featured)
-                                        <span class="absolute top-3 left-3 bg-gold-500 text-navy-900 text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full">Featured</span>
-                                    @endif
-                                </div>
-                                <div class="p-5">
-                                    <p class="text-[11px] font-semibold text-gold-600 uppercase tracking-wide">{{ $product->category->name }}</p>
-                                    <h3 class="mt-1 font-semibold text-navy-900 text-sm leading-snug">{{ $product->name }}</h3>
-                                    <p class="text-xs text-navy-400 mt-1">per {{ $product->unit }} &middot; {{ $product->supplierProfile->business_name }}</p>
+                                <a href="{{ route('shop.show', $product) }}" wire:navigate class="block">
+                                    <div class="aspect-square bg-navy-50 flex items-center justify-center relative overflow-hidden">
+                                        <x-icon :name="$product->category->icon ?? 'cart'" class="w-16 h-16 text-navy-300 group-hover:scale-110 group-hover:text-gold-500 transition-all duration-300" stroke-width="1.2" />
+                                        @if ($product->is_featured)
+                                            <span class="absolute top-3 left-3 bg-gold-500 text-navy-900 text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full">Featured</span>
+                                        @endif
+                                    </div>
+                                    <div class="px-5 pt-5">
+                                        <p class="text-[11px] font-semibold text-gold-600 uppercase tracking-wide">{{ $product->category->name }}</p>
+                                        <h3 class="mt-1 font-semibold text-navy-900 text-sm leading-snug">{{ $product->name }}</h3>
+                                        <p class="text-xs text-navy-400 mt-1">per {{ $product->unit }} &middot; {{ $product->supplierProfile->business_name }}</p>
+                                    </div>
+                                </a>
+                                <div class="px-5 pb-5">
                                     <div class="mt-3 flex items-center justify-between">
                                         <span class="font-heading font-bold text-navy-900">{{ number_format($product->price) }} <span class="text-xs font-normal text-navy-400">XAF</span></span>
-                                        <span class="flex items-center justify-center w-9 h-9 rounded-full bg-gold-500 text-navy-900 group-hover:bg-gold-600 group-hover:scale-110 transition-all duration-150">
-                                            <x-icon name="arrow-right" class="w-4 h-4" />
-                                        </span>
+                                        <button
+                                            type="button"
+                                            wire:click="addToCart({{ $product->id }})"
+                                            @class([
+                                                'flex items-center justify-center w-9 h-9 rounded-full transition-all duration-150',
+                                                'bg-green-500 text-white' => $justAdded === $product->id,
+                                                'bg-gold-500 text-navy-900 hover:bg-gold-600 hover:scale-110' => $justAdded !== $product->id,
+                                            ])
+                                        >
+                                            <x-icon :name="$justAdded === $product->id ? 'check' : 'cart'" class="w-4 h-4" />
+                                        </button>
                                     </div>
                                 </div>
-                            </a>
+                            </div>
                         @endforeach
                     </div>
 

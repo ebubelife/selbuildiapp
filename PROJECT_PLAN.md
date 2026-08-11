@@ -119,6 +119,8 @@ Field-level plan (not full migrations yet) — grouped by domain.
 
 ### 4.3 Cart & Orders
 
+*(`carts` through `payments` below are built as of Phase 3 — `payments` rows aren't written yet since there's no gateway integration. `shipments`, `shipment_events`, and `reviews` are still just design — Phase 4/5.)*
+
 - **carts** — user_id (nullable for guest via session_id)
 - **cart_items** — cart_id, product_id, variant_id, quantity, unit_price_snapshot
 - **projects** *(contractor/customer project grouping)* — user_id, name, address_id, budget, start_date, status
@@ -189,6 +191,8 @@ Field-level plan (not full migrations yet) — grouped by domain.
 - **Multi-supplier aware** — items grouped by supplier since fulfillment/shipping splits per supplier.
 - Empty-state illustration, not just blank space.
 
+*(Implemented in Phase 3 as described above.)*
+
 ### 6.4 Checkout / order flow
 
 1. **Cart review** — grouped by supplier, quantity edits, promo code.
@@ -197,6 +201,8 @@ Field-level plan (not full migrations yet) — grouped by domain.
 4. **Payment** — card, mobile money (MTN/Orange), bank transfer, Selbuildi Credit (shown only if eligible, with repayment terms displayed up front), and an international-card path for diaspora customers.
 5. **Review & place order** — summary + terms.
 6. **Confirmation** — order number, animated success check, estimated delivery timeline, "Track Order" CTA.
+
+**Phase 3 shipped a simplified version of this**: three steps (review → address → confirm), no promo codes, no delivery-type/scheduling picker, no Project linking yet, and payment is a single hardcoded "Cash / Pay on Delivery" method (steps 3–4's full richness, and real payment integration, are deferred — see §10.1). Confirmation page (step 6) is built as designed, including the animated check and status timeline.
 
 ### 6.5 Order tracking
 
@@ -283,7 +289,7 @@ To make this work, two files are environment-aware (safe for both local dev and 
 - **Phase 0 — Foundation** ✅ *(done)*: Laravel + MySQL + Breeze (Livewire) auth, base project structure.
 - **Phase 1 — Design System & Landing** ✅ *(done)*: Tailwind theme with brand colors/fonts, component library, animated landing page, updated auth screens, responsive nav/footer.
 - **Phase 2 — Catalog & Browsing** ✅ *(done)*: `users.role` + `supplier_profiles` (verification-pending state built in, not yet an admin approval UI — that's Phase 5), full catalog schema (`categories`, `brands`, `products`, `product_images`, `product_variants`, `warehouses`, `inventories`), seeded with 6 categories / 4 suppliers / 12 products. Shop browsing page (search, category pills, sort, pagination), product detail page, public supplier profile page — all wired to real data, landing page's category/featured sections pull from the DB now instead of hardcoded arrays. Register got a tabbed Customer/Supplier flow (different fields per tab, animated via `@entangle`); login got a matching cosmetic tab treatment. *(Cart is still Phase 3 — "Add to Cart" on product pages is not yet wired up.)*
-- **Phase 3 — Cart & Checkout**: cart drawer, multi-supplier cart, addresses, checkout flow, first payment integration, order confirmation.
+- **Phase 3 — Cart & Checkout** ✅ *(done)*: `carts`/`cart_items` (guest carts keyed by session ID, merged into the user's cart on login/register), `addresses` (polymorphic, reused for future supplier/warehouse addresses), `orders`/`order_items`/`order_status_history`/`payments`, `projects` (placeholder for Phase 5). Persistent nav cart widget with a slide-over drawer (teleported to `<body>` via Alpine `x-teleport` so it isn't clipped by the nav's `backdrop-blur` containing block once scrolled). Add-to-cart wired on the shop grid, product detail, and landing page. Multi-step checkout (review → delivery address → confirm) grouping items by supplier, with saved-address reuse and a new-address form. Order placement is atomic (`DB::transaction`) and does a best-effort inventory decrement. Animated order confirmation page with a status timeline. *(Payment is a placeholder — "Cash / Pay on Delivery" only; a Cameroonian payment provider integration is deferred, see §10.1.)* Covered by 16 new feature tests (`CartTest`, `CheckoutTest`) on top of the existing suite — 48/48 passing.
 - **Phase 4 — Order Tracking & Notifications**: status timeline, shipment events, email/SMS notifications, order history.
 - **Phase 5 — Roles Expansion**: contractor projects, supplier dashboard, Filament admin panel.
 - **Phase 6 — Trust & Credit**: trust score engine, credit checkout option, admin credit approval workflow.
@@ -296,7 +302,7 @@ To make this work, two files are environment-aware (safe for both local dev and 
 
 These need your input before the relevant phase starts — flagged here rather than guessed at:
 
-1. **Payment provider** — Flutterwave vs Paystack vs both; how diaspora card payments are handled if the primary provider restricts foreign-issued cards.
+1. **Payment provider** — **partially decided**: the merchant plans to use their own Cameroonian payment provider (not yet named/integrated), so Phase 3 shipped checkout with a hardcoded "Cash / Pay on Delivery" `payment_method` and `orders.payment_status` left as `pending` — no gateway wired up yet. Still open: which provider, how diaspora card payments are handled if it restricts foreign-issued cards, and whether Selbuildi Credit (§5) is a separate payment method or a checkout-time toggle.
 2. ~~Exact brand colors~~ — **decided**: extracted from the logo, see §3.1.
 3. **SMS provider** for delivery notifications (local Cameroon aggregator vs a regional/international one like Twilio).
 4. ~~Launch country scope~~ — **decided**: Cameroon-only at launch. Region/city fields in `addresses` should still be structured generically (not hardcoded to Cameroon) so multi-country expansion later doesn't require a schema change — just data.

@@ -135,22 +135,22 @@
 
             <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 @foreach ($featuredProducts as $i => $product)
-                    <x-reveal :delay="$i * 80">
-                        <a href="{{ route('shop.show', $product) }}" wire:navigate class="group block bg-white rounded-2xl border border-navy-100 overflow-hidden hover:shadow-brand hover:-translate-y-1 transition-all duration-300">
+                    <x-reveal :delay="$i * 80" class="group bg-white rounded-2xl border border-navy-100 overflow-hidden hover:shadow-brand hover:-translate-y-1 transition-all duration-300">
+                        <a href="{{ route('shop.show', $product) }}" wire:navigate class="block">
                             <div class="aspect-square bg-navy-50 flex items-center justify-center relative overflow-hidden">
                                 <x-icon :name="$product->category->icon ?? 'cart'" class="w-16 h-16 text-navy-300 group-hover:scale-110 group-hover:text-gold-500 transition-all duration-300" stroke-width="1.2" />
                             </div>
-                            <div class="p-5">
+                            <div class="px-5 pt-5">
                                 <h3 class="font-semibold text-navy-900 text-sm">{{ $product->name }}</h3>
                                 <p class="text-xs text-navy-400 mt-1">per {{ $product->unit }}</p>
-                                <div class="mt-3 flex items-center justify-between">
-                                    <span class="font-heading font-bold text-navy-900">{{ number_format($product->price) }} <span class="text-xs font-normal text-navy-400">XAF</span></span>
-                                    <span class="flex items-center justify-center w-9 h-9 rounded-full bg-gold-500 text-navy-900 group-hover:bg-gold-600 group-hover:scale-110 transition-all duration-150">
-                                        <x-icon name="cart" class="w-4 h-4" />
-                                    </span>
-                                </div>
                             </div>
                         </a>
+                        <div class="px-5 pb-5">
+                            <div class="mt-3 flex items-center justify-between">
+                                <span class="font-heading font-bold text-navy-900">{{ number_format($product->price) }} <span class="text-xs font-normal text-navy-400">XAF</span></span>
+                                <livewire:quick-add-to-cart :product="$product" :key="'quick-add-'.$product->id" />
+                            </div>
+                        </div>
                     </x-reveal>
                 @endforeach
             </div>
