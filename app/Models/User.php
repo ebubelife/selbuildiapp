@@ -13,7 +13,10 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role'])]
+#[Fillable([
+    'name', 'first_name', 'last_name', 'email', 'password', 'role', 'phone',
+    'country', 'project_country', 'city', 'account_type', 'preferred_currency', 'is_diaspora',
+])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -37,6 +40,11 @@ class User extends Authenticatable
     public function supplierProfile(): HasOne
     {
         return $this->hasOne(SupplierProfile::class);
+    }
+
+    public function contractorProfile(): HasOne
+    {
+        return $this->hasOne(ContractorProfile::class);
     }
 
     public function cart(): HasOne

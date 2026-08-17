@@ -36,6 +36,36 @@
                 </div>
             @else
                 @if (auth()->user()->isContractor())
+                    @php $contractor = auth()->user()->contractorProfile; @endphp
+
+                    @if ($contractor && $contractor->verification_status !== 'verified')
+                        <div @class([
+                            'border rounded-2xl p-6 mb-6 flex items-start gap-4',
+                            'bg-gold-50 border-gold-100' => $contractor->verification_status === 'pending',
+                            'bg-red-50 border-red-100' => $contractor->verification_status === 'rejected',
+                        ])>
+                            <span @class([
+                                'flex items-center justify-center w-10 h-10 rounded-full shrink-0',
+                                'bg-gold-500 text-navy-900' => $contractor->verification_status === 'pending',
+                                'bg-red-500 text-white' => $contractor->verification_status === 'rejected',
+                            ])>
+                                <x-icon name="shield" class="w-5 h-5" />
+                            </span>
+                            <div>
+                                <h3 class="font-heading font-semibold text-navy-900">
+                                    {{ $contractor->verification_status === 'rejected' ? 'Verification unsuccessful' : 'Verification pending' }}
+                                </h3>
+                                <p class="mt-1 text-sm text-navy-600 leading-relaxed max-w-2xl">
+                                    @if ($contractor->verification_status === 'rejected')
+                                        We couldn't verify your contractor account with the documents provided. Contact support to resubmit.
+                                    @else
+                                        Your contractor account is under review. Our team verifies identification and business details before full features unlock — we'll email you once it's approved.
+                                    @endif
+                                </p>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-navy-100 mb-6">
                         <div class="p-8">
                             <div class="flex items-center justify-between flex-wrap gap-3">

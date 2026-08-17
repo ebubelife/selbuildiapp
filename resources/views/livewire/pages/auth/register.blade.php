@@ -10,15 +10,45 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
 
-new #[Layout('layouts.guest')] class extends Component
+new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Component
 {
+    use WithFileUploads;
+
     public string $role = 'customer';
+
+    // Supplier only - customer/contractor use first_name + last_name instead.
     public string $name = '';
+
+    public string $first_name = '';
+    public string $last_name = '';
     public string $email = '';
-    public string $business_name = '';
+    public string $phone = '';
     public string $password = '';
     public string $password_confirmation = '';
+
+    // Shared by customer (country of residence) and contractor (operating country).
+    public string $country = '';
+    public string $city = '';
+
+    // Customer only.
+    public string $project_country = '';
+    public string $account_type = 'individual';
+    public string $preferred_currency = 'XAF';
+
+    // Business name is shared by supplier and contractor - only one role's
+    // form is visible/submitted at a time, so there's no field collision.
+    public string $business_name = '';
+
+    // Contractor only.
+    public string $business_address = '';
+    public string $specialization = '';
+    public ?int $years_experience = null;
+    public string $registration_no = '';
+    public string $license_no = '';
+    public $id_document;
+    public $photo;
 
     /**
      * Handle an incoming registration request.
@@ -27,12 +57,37 @@ new #[Layout('layouts.guest')] class extends Component
     {
         $rules = [
             'role' => ['required', 'in:customer,contractor,supplier'],
-            'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'phone' => ['required', 'string', 'max:30'],
             'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
         ];
 
+        if (in_array($this->role, ['customer', 'contractor'], true)) {
+            $rules['first_name'] = ['required', 'string', 'max:255'];
+            $rules['last_name'] = ['required', 'string', 'max:255'];
+            $rules['country'] = ['required', 'string', 'max:255'];
+            $rules['city'] = ['required', 'string', 'max:255'];
+        }
+
+        if ($this->role === 'customer') {
+            $rules['project_country'] = ['required', 'string', 'max:255'];
+            $rules['account_type'] = ['required', 'in:individual,diaspora_buyer,property_developer'];
+            $rules['preferred_currency'] = ['required', 'in:XAF,USD,EUR,GBP'];
+        }
+
+        if ($this->role === 'contractor') {
+            $rules['business_name'] = ['required', 'string', 'max:255'];
+            $rules['business_address'] = ['required', 'string', 'max:255'];
+            $rules['specialization'] = ['required', 'string', 'max:255'];
+            $rules['years_experience'] = ['nullable', 'integer', 'min:0', 'max:80'];
+            $rules['registration_no'] = ['nullable', 'string', 'max:255'];
+            $rules['license_no'] = ['nullable', 'string', 'max:255'];
+            $rules['id_document'] = ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'];
+            $rules['photo'] = ['nullable', 'image', 'max:2048'];
+        }
+
         if ($this->role === 'supplier') {
+            $rules['name'] = ['required', 'string', 'max:255'];
             $rules['business_name'] = ['required', 'string', 'max:255'];
         }
 
@@ -43,17 +98,48 @@ new #[Layout('layouts.guest')] class extends Component
         // session ID has to be captured before it runs, not after.
         $guestSessionId = Session::getId();
 
+        $name = $this->role === 'supplier'
+            ? $validated['name']
+            : trim($validated['first_name'].' '.$validated['last_name']);
+
         $user = User::create([
-            'name' => $validated['name'],
+            'name' => $name,
+            'first_name' => $validated['first_name'] ?? null,
+            'last_name' => $validated['last_name'] ?? null,
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'],
+            'phone' => $validated['phone'],
+            'country' => $validated['country'] ?? null,
+            'project_country' => $validated['project_country'] ?? null,
+            'city' => $validated['city'] ?? null,
+            'account_type' => $validated['account_type'] ?? null,
+            'preferred_currency' => $validated['preferred_currency'] ?? 'XAF',
         ]);
 
         if ($this->role === 'supplier') {
             $user->supplierProfile()->create([
                 'business_name' => $validated['business_name'],
                 'slug' => Str::slug($validated['business_name']).'-'.Str::lower(Str::random(5)),
+            ]);
+        }
+
+        if ($this->role === 'contractor') {
+            // The ID document is KYC material - it goes on the private
+            // "local" disk, never "public", so it's never reachable by URL.
+            $idDocumentPath = $this->id_document->store('contractor-documents', 'local');
+            $photoPath = $this->photo?->store('contractor-photos', 'public');
+
+            $user->contractorProfile()->create([
+                'business_name' => $validated['business_name'],
+                'business_address' => $validated['business_address'],
+                'specialization' => $validated['specialization'],
+                'years_experience' => $validated['years_experience'] ?? null,
+                'registration_no' => $validated['registration_no'] ?? null,
+                'license_no' => $validated['license_no'] ?? null,
+                'id_document_path' => $idDocumentPath,
+                'photo_path' => $photoPath,
+                'verification_status' => 'pending',
             ]);
         }
 
@@ -133,62 +219,179 @@ new #[Layout('layouts.guest')] class extends Component
         class="mt-3 text-xs text-navy-500 bg-gold-50 border border-gold-100 rounded-lg px-3 py-2"
         x-cloak
     >
-        Contractor accounts can group orders into Projects to track spend per build.
+        Contractor accounts are verified before listings/orders unlock full features, and can group orders into Projects to track spend per build.
     </p>
 
-    <form wire:submit="register" class="mt-6 {{ $errors->any() ? 'animate-shake' : '' }}">
-        <!-- Name -->
-        <div>
+    <form wire:submit="register" enctype="multipart/form-data" class="mt-6 {{ $errors->any() ? 'animate-shake' : '' }}">
+        <!-- Name: supplier gets a single field, customer/contractor get first + last -->
+        <div x-show="role === 'supplier'" x-cloak>
             <x-input-label for="name" :value="__('Your Name')" />
-            <x-text-input wire:model="name" id="name" class="block mt-1 w-full" type="text" name="name" required autofocus autocomplete="name" />
+            <x-text-input wire:model="name" id="name" class="block mt-1 w-full" type="text" name="name" autocomplete="name" />
             <x-input-error :messages="$errors->get('name')" class="mt-2" />
         </div>
 
-        <!-- Business Name (supplier only) -->
+        <div x-show="role !== 'supplier'" x-cloak class="grid sm:grid-cols-2 gap-4">
+            <div>
+                <x-input-label for="first_name" value="First Name" />
+                <x-text-input wire:model="first_name" id="first_name" class="block mt-1 w-full" type="text" autocomplete="given-name" />
+                <x-input-error :messages="$errors->get('first_name')" class="mt-2" />
+            </div>
+            <div>
+                <x-input-label for="last_name" value="Last Name" />
+                <x-text-input wire:model="last_name" id="last_name" class="block mt-1 w-full" type="text" autocomplete="family-name" />
+                <x-input-error :messages="$errors->get('last_name')" class="mt-2" />
+            </div>
+        </div>
+
+        <!-- Business Name (supplier + contractor) -->
         <div
-            x-show="role === 'supplier'"
+            x-show="role === 'supplier' || role === 'contractor'"
             x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0 -translate-y-2 max-h-0"
-            x-transition:enter-end="opacity-100 translate-y-0 max-h-24"
-            x-transition:leave="transition ease-in duration-150"
-            x-transition:leave-start="opacity-100 max-h-24"
-            x-transition:leave-end="opacity-0 max-h-0"
-            class="overflow-hidden mt-4"
+            x-transition:enter-start="opacity-0 -translate-y-2"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            class="mt-4"
             x-cloak
         >
-            <x-input-label for="business_name" :value="__('Business Name')" />
+            <x-input-label for="business_name" x-text="role === 'contractor' ? 'Business / Company Name' : 'Business Name'" />
             <x-text-input wire:model="business_name" id="business_name" class="block mt-1 w-full" type="text" name="business_name" autocomplete="organization" />
             <x-input-error :messages="$errors->get('business_name')" class="mt-2" />
         </div>
 
-        <!-- Email Address -->
-        <div class="mt-4">
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input wire:model="email" id="email" class="block mt-1 w-full" type="email" name="email" required autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
+        <!-- Email + Phone -->
+        <div class="mt-4 grid sm:grid-cols-2 gap-4">
+            <div>
+                <x-input-label for="email" :value="__('Email')" />
+                <x-text-input wire:model="email" id="email" class="block mt-1 w-full" type="email" name="email" required autocomplete="username" />
+                <x-input-error :messages="$errors->get('email')" class="mt-2" />
+            </div>
+            <div>
+                <x-input-label for="phone" value="Phone Number" />
+                <x-text-input wire:model="phone" id="phone" class="block mt-1 w-full" type="tel" autocomplete="tel" />
+                <x-input-error :messages="$errors->get('phone')" class="mt-2" />
+            </div>
+        </div>
+
+        <!-- Country + City (customer + contractor) -->
+        <div x-show="role !== 'supplier'" x-cloak class="mt-4 grid sm:grid-cols-2 gap-4">
+            <div>
+                <x-input-label for="country" x-text="role === 'contractor' ? 'Country' : 'Country of Residence'" />
+                <x-text-input wire:model="country" id="country" class="block mt-1 w-full" type="text" />
+                <x-input-error :messages="$errors->get('country')" class="mt-2" />
+            </div>
+            <div>
+                <x-input-label for="city" x-text="role === 'contractor' ? 'City / Operating Location' : 'City / Project Location'" />
+                <x-text-input wire:model="city" id="city" class="block mt-1 w-full" type="text" />
+                <x-input-error :messages="$errors->get('city')" class="mt-2" />
+            </div>
+        </div>
+
+        <!-- Customer-only fields -->
+        <div x-show="role === 'customer'" x-cloak>
+            <div class="mt-4">
+                <x-input-label for="project_country" value="Country Where the Construction Project is Located" />
+                <x-text-input wire:model="project_country" id="project_country" class="block mt-1 w-full" type="text" />
+                <x-input-error :messages="$errors->get('project_country')" class="mt-2" />
+            </div>
+
+            <div class="mt-4 grid sm:grid-cols-2 gap-4">
+                <div>
+                    <x-input-label for="account_type" value="Account Type" />
+                    <select wire:model="account_type" id="account_type" class="mt-1 block w-full rounded-lg border-navy-200 focus:border-gold-500 focus:ring-gold-500 text-sm">
+                        <option value="individual">Individual</option>
+                        <option value="diaspora_buyer">Diaspora Buyer</option>
+                        <option value="property_developer">Property Developer</option>
+                    </select>
+                    <x-input-error :messages="$errors->get('account_type')" class="mt-2" />
+                </div>
+                <div>
+                    <x-input-label for="preferred_currency" value="Preferred Currency" />
+                    <select wire:model="preferred_currency" id="preferred_currency" class="mt-1 block w-full rounded-lg border-navy-200 focus:border-gold-500 focus:ring-gold-500 text-sm">
+                        <option value="XAF">XAF</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="GBP">GBP</option>
+                    </select>
+                    <x-input-error :messages="$errors->get('preferred_currency')" class="mt-2" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Contractor-only fields -->
+        <div x-show="role === 'contractor'" x-cloak>
+            <div class="mt-4">
+                <x-input-label for="business_address" value="Business Address" />
+                <x-text-input wire:model="business_address" id="business_address" class="block mt-1 w-full" type="text" />
+                <x-input-error :messages="$errors->get('business_address')" class="mt-2" />
+            </div>
+
+            <div class="mt-4 grid sm:grid-cols-2 gap-4">
+                <div>
+                    <x-input-label for="specialization" value="Type of Contractor / Specialization" />
+                    <select wire:model="specialization" id="specialization" class="mt-1 block w-full rounded-lg border-navy-200 focus:border-gold-500 focus:ring-gold-500 text-sm">
+                        <option value="">Select one</option>
+                        <option>General Contractor</option>
+                        <option>Electrical</option>
+                        <option>Plumbing</option>
+                        <option>Roofing</option>
+                        <option>Masonry</option>
+                        <option>Architecture</option>
+                        <option>Other</option>
+                    </select>
+                    <x-input-error :messages="$errors->get('specialization')" class="mt-2" />
+                </div>
+                <div>
+                    <x-input-label for="years_experience" value="Years of Experience" />
+                    <x-text-input wire:model="years_experience" id="years_experience" class="block mt-1 w-full" type="number" min="0" max="80" />
+                    <x-input-error :messages="$errors->get('years_experience')" class="mt-2" />
+                </div>
+            </div>
+
+            <div class="mt-4 grid sm:grid-cols-2 gap-4">
+                <div>
+                    <x-input-label for="registration_no" value="Business Registration Number (optional)" />
+                    <x-text-input wire:model="registration_no" id="registration_no" class="block mt-1 w-full" type="text" />
+                    <x-input-error :messages="$errors->get('registration_no')" class="mt-2" />
+                </div>
+                <div>
+                    <x-input-label for="license_no" value="Professional License / Certification (optional)" />
+                    <x-text-input wire:model="license_no" id="license_no" class="block mt-1 w-full" type="text" />
+                    <x-input-error :messages="$errors->get('license_no')" class="mt-2" />
+                </div>
+            </div>
+
+            <div class="mt-4 grid sm:grid-cols-2 gap-4">
+                <div>
+                    <x-input-label for="id_document" value="Identification Document" />
+                    <input wire:model="id_document" id="id_document" type="file" accept=".jpg,.jpeg,.png,.pdf" class="mt-1 block w-full text-sm text-navy-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-navy-50 file:text-navy-700 file:text-sm file:font-semibold hover:file:bg-navy-100" />
+                    <p class="mt-1 text-xs text-navy-400" wire:loading wire:target="id_document">Uploading&hellip;</p>
+                    <x-input-error :messages="$errors->get('id_document')" class="mt-2" />
+                </div>
+                <div>
+                    <x-input-label for="photo" value="Profile Photo / Company Logo (optional)" />
+                    <input wire:model="photo" id="photo" type="file" accept="image/*" class="mt-1 block w-full text-sm text-navy-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-navy-50 file:text-navy-700 file:text-sm file:font-semibold hover:file:bg-navy-100" />
+                    <p class="mt-1 text-xs text-navy-400" wire:loading wire:target="photo">Uploading&hellip;</p>
+                    <x-input-error :messages="$errors->get('photo')" class="mt-2" />
+                </div>
+            </div>
         </div>
 
         <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input wire:model="password" id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="new-password" />
-
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-        </div>
-
-        <!-- Confirm Password -->
-        <div class="mt-4">
-            <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
-
-            <x-text-input wire:model="password_confirmation" id="password_confirmation" class="block mt-1 w-full"
-                            type="password"
-                            name="password_confirmation" required autocomplete="new-password" />
-
-            <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
+        <div class="mt-4 grid sm:grid-cols-2 gap-4">
+            <div>
+                <x-input-label for="password" :value="__('Password')" />
+                <x-text-input wire:model="password" id="password" class="block mt-1 w-full"
+                                type="password"
+                                name="password"
+                                required autocomplete="new-password" />
+                <x-input-error :messages="$errors->get('password')" class="mt-2" />
+            </div>
+            <div>
+                <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
+                <x-text-input wire:model="password_confirmation" id="password_confirmation" class="block mt-1 w-full"
+                                type="password"
+                                name="password_confirmation" required autocomplete="new-password" />
+                <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
+            </div>
         </div>
 
         <div class="mt-6">

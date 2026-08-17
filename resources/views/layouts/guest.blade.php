@@ -60,7 +60,7 @@
                     <x-application-logo variant="full" class="h-10 w-auto" />
                 </a>
 
-                <div class="w-full sm:max-w-md">
+                <div class="w-full {{ $maxWidth ?? 'sm:max-w-md' }}">
                     <div class="bg-white px-6 py-8 sm:px-10 sm:py-10 shadow-brand rounded-2xl border border-navy-100">
                         {{ $slot }}
                     </div>
