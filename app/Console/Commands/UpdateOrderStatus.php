@@ -3,19 +3,16 @@
 namespace App\Console\Commands;
 
 use App\Models\Order;
-use App\Models\OrderStatusHistory;
-use App\Notifications\OrderStatusUpdated;
-use App\Services\TrustScoreService;
+use App\Services\OrderFulfillmentService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class UpdateOrderStatus extends Command
 {
     protected $signature = 'orders:update-status {order : Order ID or order number} {status} {--note=}';
 
-    protected $description = 'Advance an order to a new status, log the change, and notify the customer. Stand-in for the Phase 5 supplier/admin fulfillment UI.';
+    protected $description = 'Advance an order to a new status, log the change, and notify the customer. Stand-in for admin/ops overriding a multi-supplier order the supplier fulfillment UI can\'t cascade automatically.';
 
-    public function handle(): int
+    public function handle(OrderFulfillmentService $fulfillmentService): int
     {
         $identifier = $this->argument('order');
         $status = $this->argument('status');
@@ -38,24 +35,7 @@ class UpdateOrderStatus extends Command
 
         $note = (string) $this->option('note');
 
-        DB::transaction(function () use ($order, $status, $note) {
-            $order->update(['status' => $status]);
-
-            OrderStatusHistory::create([
-                'order_id' => $order->id,
-                'status' => $status,
-                'note' => $note !== '' ? $note : null,
-                'changed_by' => null,
-            ]);
-        });
-
-        $order->user->notify(new OrderStatusUpdated($order, $note));
-
-        if ($status === 'delivered') {
-            app(TrustScoreService::class)->recordEvent($order->user, 'order_completed', $order);
-        } elseif ($status === 'cancelled') {
-            app(TrustScoreService::class)->recordEvent($order->user, 'cancellation', $order);
-        }
+        $fulfillmentService->advanceOrderStatus($order, $status, $note);
 
         $this->info("Order {$order->order_number} is now \"{$order->statusLabel()}\". Customer notified.");
 

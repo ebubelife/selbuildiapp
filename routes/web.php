@@ -31,10 +31,16 @@ Route::middleware('auth')->group(function () {
     Volt::route('projects', 'projects.index')->name('projects.index');
     Volt::route('projects/{project}', 'projects.show')->name('projects.show');
     Volt::route('credit', 'credit.index')->name('credit.index');
+
+    Volt::route('supplier/products', 'supplier.products.index')->name('supplier.products.index');
+    Volt::route('supplier/products/create', 'supplier.products.form')->name('supplier.products.create');
+    Volt::route('supplier/products/{product}/edit', 'supplier.products.form')->name('supplier.products.edit');
+    Volt::route('supplier/orders', 'supplier.orders.index')->name('supplier.orders.index');
 });
 
 Route::get('dashboard', function () {
     $user = auth()->user();
+    $supplier = $user->isSupplier() ? $user->supplierProfile : null;
 
     return view('dashboard', [
         'recentOrders' => $user->isSupplier()
@@ -46,6 +52,12 @@ Route::get('dashboard', function () {
             : collect(),
         'projectCount' => $user->isContractor() ? $user->projects()->count() : 0,
         'trustScore' => ! $user->isSupplier() ? $user->trustScore : null,
+        'productCount' => $supplier?->isVerified() ? $supplier->products()->count() : 0,
+        'pendingFulfillmentCount' => $supplier?->isVerified()
+            ? \App\Models\OrderItem::where('supplier_profile_id', $supplier->id)
+                ->whereIn('fulfillment_status', ['pending', 'confirmed', 'shipped'])
+                ->count()
+            : 0,
     ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 

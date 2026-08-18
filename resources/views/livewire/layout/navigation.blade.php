@@ -48,6 +48,14 @@ new class extends Component
                             {{ __('My Credit') }}
                         </x-nav-link>
                     @endunless
+                    @if (auth()->user()->isSupplier())
+                        <x-nav-link :href="route('supplier.products.index')" :active="request()->routeIs('supplier.products.*')" wire:navigate>
+                            {{ __('My Products') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('supplier.orders.index')" :active="request()->routeIs('supplier.orders.*')" wire:navigate>
+                            {{ __('Orders') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -114,6 +122,14 @@ new class extends Component
                     {{ __('My Credit') }}
                 </x-responsive-nav-link>
             @endunless
+            @if (auth()->user()->isSupplier())
+                <x-responsive-nav-link :href="route('supplier.products.index')" :active="request()->routeIs('supplier.products.*')" wire:navigate>
+                    {{ __('My Products') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('supplier.orders.index')" :active="request()->routeIs('supplier.orders.*')" wire:navigate>
+                    {{ __('Orders') }}
+                </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->

@@ -29,9 +29,31 @@
                         <h3 class="font-heading text-lg font-semibold text-navy-900">
                             {{ __('Welcome, :name.', ['name' => explode(' ', auth()->user()->name)[0]]) }}
                         </h3>
-                        <p class="mt-2 text-sm text-navy-500 leading-relaxed max-w-2xl">
-                            {{ __('Your product listings, inventory, and orders will show up here once your account is verified.') }}
-                        </p>
+
+                        @if ($supplier?->isVerified())
+                            <p class="mt-2 text-sm text-navy-500">Manage your listings and fulfill orders from here.</p>
+
+                            <div class="mt-6 grid sm:grid-cols-2 gap-4">
+                                <a href="{{ route('supplier.products.index') }}" wire:navigate class="block p-5 rounded-xl border border-navy-100 hover:border-gold-300 hover:shadow-brand transition-all duration-200">
+                                    <p class="font-heading font-bold text-2xl text-navy-900">{{ $productCount }}</p>
+                                    <p class="text-sm text-navy-500 mt-1 flex items-center gap-1">
+                                        My Products
+                                        <x-icon name="arrow-right" class="w-3.5 h-3.5" />
+                                    </p>
+                                </a>
+                                <a href="{{ route('supplier.orders.index') }}" wire:navigate class="block p-5 rounded-xl border border-navy-100 hover:border-gold-300 hover:shadow-brand transition-all duration-200">
+                                    <p class="font-heading font-bold text-2xl text-navy-900">{{ $pendingFulfillmentCount }}</p>
+                                    <p class="text-sm text-navy-500 mt-1 flex items-center gap-1">
+                                        Orders to Fulfill
+                                        <x-icon name="arrow-right" class="w-3.5 h-3.5" />
+                                    </p>
+                                </a>
+                            </div>
+                        @else
+                            <p class="mt-2 text-sm text-navy-500 leading-relaxed max-w-2xl">
+                                {{ __('Your product listings, inventory, and orders will show up here once your account is verified.') }}
+                            </p>
+                        @endif
                     </div>
                 </div>
             @else
