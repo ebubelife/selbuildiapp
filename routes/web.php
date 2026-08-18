@@ -1,12 +1,15 @@
 <?php
 
 use App\Http\Controllers\DeployController;
+use App\Http\Controllers\SitemapController;
 use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 Route::post('deploy-hook', [DeployController::class, 'run'])->name('deploy-hook');
+
+Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 
 Route::get('/', function () {
     return view('welcome', [

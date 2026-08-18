@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.site')] class extends Component
+new #[Layout('components.layouts.site', ['noindex' => true])] class extends Component
 {
     public int $requestedLimit = 50000;
 
@@ -93,13 +93,13 @@ new #[Layout('components.layouts.site')] class extends Component
                         </svg>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
                             <span class="font-heading text-4xl font-bold text-navy-900">{{ $score }}</span>
-                            <span class="text-xs text-gold-600 font-semibold uppercase tracking-wide mt-1">{{ ucfirst($tier) }} Tier</span>
+                            <span class="text-xs text-gold-800 font-semibold uppercase tracking-wide mt-1">{{ ucfirst($tier) }} Tier</span>
                         </div>
                     </div>
                 </div>
 
                 <div>
-                    <span class="text-sm font-semibold text-gold-600 uppercase tracking-wide">Procurement Trust Score</span>
+                    <span class="text-sm font-semibold text-gold-800 uppercase tracking-wide">Procurement Trust Score</span>
                     <h2 class="mt-2 font-heading text-xl font-bold text-navy-900">
                         @if ($nextTier)
                             {{ $nextTierThreshold - $score }} {{ Str::plural('point', $nextTierThreshold - $score) }} to {{ ucfirst($nextTier) }}

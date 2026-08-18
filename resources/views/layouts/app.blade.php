@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
+        {{-- Every page using this layout (dashboard, profile) sits behind
+             auth middleware, so it's never indexable - no per-page toggle
+             needed. --}}
+        @php($noindex = true)
         @include('partials.head-meta')
 
         <title>{{ config('app.name', 'Selbuildi') }}</title>

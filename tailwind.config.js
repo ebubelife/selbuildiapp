@@ -29,6 +29,13 @@ export default {
                     500: '#D99400',
                     600: '#BD8100',
                     700: '#A36F00',
+                    // 500/600/700 all fail WCAG AA (4.5:1) for text on white
+                    // or gold-50/100 backgrounds - measured 2.6:1/3.3:1/4.35:1
+                    // respectively. 800 is the accent color's darkest step,
+                    // specifically for text on light backgrounds (5.6:1) -
+                    // 500/600/700 remain fine as-is on dark navy backgrounds
+                    // (~7-8:1) or for large/bold headline text.
+                    800: '#8C5F00',
                 },
             },
             fontFamily: {

@@ -6,7 +6,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
 
-new #[Layout('components.layouts.site')] class extends Component
+new #[Layout('components.layouts.site', ['noindex' => true])] class extends Component
 {
     use WithPagination;
 

@@ -1,2 +1,12 @@
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /checkout
+Disallow: /orders
+Disallow: /projects
+Disallow: /credit
+Disallow: /supplier/
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /admin
+
+Sitemap: https://selbuildi.com/sitemap.xml

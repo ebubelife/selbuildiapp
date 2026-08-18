@@ -11,17 +11,26 @@ use Illuminate\Support\Facades\Session;
 
 class CartService
 {
+    private ?Cart $resolvedCart = null;
+
     /**
      * Resolve the cart for the current request: the authenticated user's
      * cart, or a session-backed guest cart, creating either as needed.
+     * Memoized per instance - the nav cart widget, quick-add buttons, and
+     * whatever page is rendering can all call this without each one
+     * re-querying. Registered as a singleton (see AppServiceProvider) so
+     * that memoization holds across the whole request, not just within a
+     * single Livewire component.
      */
     public function current(): Cart
     {
-        if (Auth::check()) {
-            return Cart::firstOrCreate(['user_id' => Auth::id()]);
+        if ($this->resolvedCart) {
+            return $this->resolvedCart;
         }
 
-        return Cart::firstOrCreate(['session_id' => Session::getId(), 'user_id' => null]);
+        return $this->resolvedCart = Auth::check()
+            ? Cart::firstOrCreate(['user_id' => Auth::id()])
+            : Cart::firstOrCreate(['session_id' => Session::getId(), 'user_id' => null]);
     }
 
     public function add(Product $product, int $quantity, ?ProductVariant $variant = null): void
@@ -61,6 +70,11 @@ class CartService
      */
     public function mergeSessionCartInto(User $user, string $guestSessionId): void
     {
+        // Invalidate the memoized cart (see current()) - if anything on
+        // this same instance resolved the guest cart before login, it must
+        // not keep handing that stale/soon-to-be-deleted cart out.
+        $this->resolvedCart = null;
+
         $sessionCart = Cart::where('session_id', $guestSessionId)
             ->whereNull('user_id')
             ->with('items')

@@ -25,6 +25,17 @@ new #[Layout('components.layouts.site')] class extends Component
                 ->paginate(12),
         ];
     }
+
+    public function render(): mixed
+    {
+        return parent::render()
+            ->title("{$this->supplier->business_name} — Verified Building Materials Supplier | Selbuildi")
+            ->layoutData([
+                'description' => "Shop building materials from {$this->supplier->business_name}, a".
+                    ($this->supplier->isVerified() ? ' verified' : '').
+                    ' supplier on Selbuildi. Compare prices and order with delivery tracking across Cameroon.',
+            ]);
+    }
 }; ?>
 
 <div>
@@ -68,7 +79,7 @@ new #[Layout('components.layouts.site')] class extends Component
                                 <x-icon :name="$product->category->icon ?? 'cart'" class="w-16 h-16 text-navy-300 group-hover:text-gold-500 transition-colors duration-300" stroke-width="1.2" />
                             </div>
                             <div class="p-5">
-                                <p class="text-[11px] font-semibold text-gold-600 uppercase tracking-wide">{{ $product->category->name }}</p>
+                                <p class="text-[11px] font-semibold text-gold-800 uppercase tracking-wide">{{ $product->category->name }}</p>
                                 <h3 class="mt-1 font-semibold text-navy-900 text-sm leading-snug">{{ $product->name }}</h3>
                                 <span class="mt-2 block font-heading font-bold text-navy-900 text-sm">{{ number_format($product->price) }} XAF</span>
                             </div>

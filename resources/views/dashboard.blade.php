@@ -130,7 +130,7 @@
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-navy-100 mb-6">
                     <a href="{{ route('credit.index') }}" wire:navigate class="p-6 flex items-center justify-between gap-4 hover:bg-navy-50 transition-colors">
                         <div class="flex items-center gap-4">
-                            <span class="flex items-center justify-center w-12 h-12 rounded-full bg-gold-50 text-gold-600 shrink-0">
+                            <span class="flex items-center justify-center w-12 h-12 rounded-full bg-gold-50 text-gold-800 shrink-0">
                                 <span class="font-heading font-bold text-sm">{{ $trustScore?->score ?? 0 }}</span>
                             </span>
                             <div>

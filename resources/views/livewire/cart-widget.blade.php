@@ -49,7 +49,7 @@
             >
                 <div class="flex items-center justify-between px-6 py-5 border-b border-navy-100">
                     <h2 class="font-heading font-bold text-lg text-navy-900">Your Cart</h2>
-                    <button type="button" wire:click="closeDrawer" class="text-navy-400 hover:text-navy-700 transition-colors">
+                    <button type="button" wire:click="closeDrawer" aria-label="Close cart" class="text-navy-400 hover:text-navy-700 transition-colors">
                         <x-icon name="close" class="w-5 h-5" />
                     </button>
                 </div>
@@ -79,11 +79,11 @@
 
                                         <div class="mt-3 flex items-center justify-between">
                                             <div class="flex items-center border border-navy-200 rounded-lg">
-                                                <button type="button" wire:click="updateQuantity({{ $item->id }}, {{ $item->quantity - 1 }})" class="w-7 h-7 flex items-center justify-center text-navy-500 hover:text-navy-900 text-sm">&minus;</button>
+                                                <button type="button" wire:click="updateQuantity({{ $item->id }}, {{ $item->quantity - 1 }})" aria-label="Decrease quantity of {{ $item->product->name }}" class="w-7 h-7 flex items-center justify-center text-navy-500 hover:text-navy-900 text-sm">&minus;</button>
                                                 <span class="w-8 text-center text-sm font-semibold text-navy-900">{{ $item->quantity }}</span>
-                                                <button type="button" wire:click="updateQuantity({{ $item->id }}, {{ $item->quantity + 1 }})" class="w-7 h-7 flex items-center justify-center text-navy-500 hover:text-navy-900 text-sm">&plus;</button>
+                                                <button type="button" wire:click="updateQuantity({{ $item->id }}, {{ $item->quantity + 1 }})" aria-label="Increase quantity of {{ $item->product->name }}" class="w-7 h-7 flex items-center justify-center text-navy-500 hover:text-navy-900 text-sm">&plus;</button>
                                             </div>
-                                            <button type="button" wire:click="removeItem({{ $item->id }})" class="text-xs text-navy-400 hover:text-red-600 transition-colors">Remove</button>
+                                            <button type="button" wire:click="removeItem({{ $item->id }})" aria-label="Remove {{ $item->product->name }} from cart" class="text-xs text-navy-400 hover:text-red-600 transition-colors">Remove</button>
                                         </div>
                                     </div>
                                 </li>

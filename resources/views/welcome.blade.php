@@ -1,4 +1,7 @@
-<x-layouts.site>
+<x-layouts.site
+    title="Selbuildi — Buy Building Materials Online in Cameroon"
+    description="Buy cement, roofing sheets, steel & rebar, and tiles from verified suppliers in Cameroon. Track deliveries live and unlock procurement credit — for local and diaspora builders."
+>
 
     {{-- Hero --}}
     <section class="relative overflow-hidden bg-gradient-to-br from-navy-900 via-navy-800 to-navy-700 pt-32 pb-24 lg:pt-44 lg:pb-32">
@@ -41,7 +44,7 @@
                     <div class="relative bg-white rounded-2xl shadow-2xl p-6 rotate-2 hover:rotate-0 transition-transform duration-500 max-w-sm mx-auto">
                         <div class="flex items-center justify-between">
                             <span class="text-xs font-semibold text-navy-500 uppercase tracking-wide">Order #SB-20481</span>
-                            <span class="text-xs font-semibold text-gold-600 bg-gold-100 rounded-full px-2.5 py-1">In Transit</span>
+                            <span class="text-xs font-semibold text-gold-800 bg-gold-100 rounded-full px-2.5 py-1">In Transit</span>
                         </div>
 
                         <ul class="mt-6 space-y-5">
@@ -100,7 +103,7 @@
     <section id="categories" class="py-24 bg-white">
         <div class="max-w-7xl mx-auto px-6 lg:px-8">
             <x-reveal class="text-center max-w-2xl mx-auto">
-                <span class="text-sm font-semibold text-gold-600 uppercase tracking-wide">Shop by Category</span>
+                <span class="text-sm font-semibold text-gold-800 uppercase tracking-wide">Shop by Category</span>
                 <h2 class="mt-3 font-heading text-3xl sm:text-4xl font-bold text-navy-900">Everything for your build, in one place</h2>
                 <p class="mt-4 text-navy-500">From foundation to finishing — sourced from suppliers we've verified ourselves.</p>
             </x-reveal>
@@ -125,7 +128,7 @@
         <div class="max-w-7xl mx-auto px-6 lg:px-8">
             <div class="flex items-end justify-between gap-6">
                 <x-reveal>
-                    <span class="text-sm font-semibold text-gold-600 uppercase tracking-wide">Featured Materials</span>
+                    <span class="text-sm font-semibold text-gold-800 uppercase tracking-wide">Featured Materials</span>
                     <h2 class="mt-3 font-heading text-3xl sm:text-4xl font-bold text-navy-900">Popular this week</h2>
                 </x-reveal>
                 <a href="{{ route('shop.index') }}" wire:navigate class="hidden sm:inline-flex items-center gap-1 text-navy-700 font-semibold hover:text-gold-600 transition-colors shrink-0">
@@ -161,7 +164,7 @@
     <section id="how-it-works" class="py-24 bg-white overflow-hidden">
         <div class="max-w-7xl mx-auto px-6 lg:px-8">
             <x-reveal class="text-center max-w-2xl mx-auto">
-                <span class="text-sm font-semibold text-gold-600 uppercase tracking-wide">How it Works</span>
+                <span class="text-sm font-semibold text-gold-800 uppercase tracking-wide">How it Works</span>
                 <h2 class="mt-3 font-heading text-3xl sm:text-4xl font-bold text-navy-900">From order to site, fully tracked</h2>
             </x-reveal>
 
@@ -190,7 +193,7 @@
     <section class="py-24 bg-navy-50">
         <div class="max-w-7xl mx-auto px-6 lg:px-8 grid lg:grid-cols-2 gap-16 items-center">
             <x-reveal>
-                <span class="text-sm font-semibold text-gold-600 uppercase tracking-wide">For the Diaspora</span>
+                <span class="text-sm font-semibold text-gold-800 uppercase tracking-wide">For the Diaspora</span>
                 <h2 class="mt-3 font-heading text-3xl sm:text-4xl font-bold text-navy-900">Building from abroad? See every step.</h2>
                 <p class="mt-4 text-navy-500 leading-relaxed">
                     Stop sending money home and hoping it's spent right. Order materials directly, pay securely from wherever you are, and watch your project's delivery progress in real time — no middlemen, no guesswork.
@@ -292,7 +295,7 @@
     {{-- Testimonials --}}
     <section class="py-24 bg-white">
         <div class="max-w-4xl mx-auto px-6 lg:px-8 text-center">
-            <span class="text-sm font-semibold text-gold-600 uppercase tracking-wide">Testimonials</span>
+            <span class="text-sm font-semibold text-gold-800 uppercase tracking-wide">Testimonials</span>
             <h2 class="mt-3 font-heading text-3xl sm:text-4xl font-bold text-navy-900">Trusted by builders and their families</h2>
 
             <div

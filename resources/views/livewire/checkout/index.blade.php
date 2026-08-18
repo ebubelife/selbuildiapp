@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.site')] class extends Component
+new #[Layout('components.layouts.site', ['noindex' => true])] class extends Component
 {
     public string $step = 'review';
 
@@ -229,7 +229,7 @@ new #[Layout('components.layouts.site')] class extends Component
 
                             @foreach ($itemsBySupplier as $supplierId => $items)
                                 <div class="mt-6 first:mt-4">
-                                    <p class="text-xs font-semibold text-gold-600 uppercase tracking-wide mb-3">
+                                    <p class="text-xs font-semibold text-gold-800 uppercase tracking-wide mb-3">
                                         {{ $items->first()->product->supplierProfile->business_name }}
                                     </p>
                                     <ul class="divide-y divide-navy-100 border border-navy-100 rounded-xl overflow-hidden">
@@ -261,10 +261,12 @@ new #[Layout('components.layouts.site')] class extends Component
                             <h2 class="font-heading font-bold text-lg text-navy-900">Delivery address</h2>
 
                             @if ($addresses->isNotEmpty() && ! $showNewAddressForm)
-                                <div class="mt-4 space-y-3">
+                                <div class="mt-4 space-y-3" role="radiogroup" aria-label="Delivery address">
                                     @foreach ($addresses as $address)
                                         <button
                                             type="button"
+                                            role="radio"
+                                            aria-checked="{{ $selectedAddressId === $address->id ? 'true' : 'false' }}"
                                             wire:click="selectAddress({{ $address->id }})"
                                             @class([
                                                 'w-full text-left p-4 rounded-xl border-2 transition-colors duration-150',
@@ -371,11 +373,13 @@ new #[Layout('components.layouts.site')] class extends Component
                             @endif
 
                             <div class="mt-4">
-                                <p class="text-xs font-semibold text-navy-500 uppercase tracking-wide mb-2">Payment method</p>
+                                <p class="text-xs font-semibold text-navy-500 uppercase tracking-wide mb-2" id="payment-method-label">Payment method</p>
 
-                                <div class="space-y-2">
+                                <div class="space-y-2" role="radiogroup" aria-labelledby="payment-method-label">
                                     <button
                                         type="button"
+                                        role="radio"
+                                        aria-checked="{{ $paymentMethod === 'cash_on_delivery' ? 'true' : 'false' }}"
                                         wire:click="$set('paymentMethod', 'cash_on_delivery')"
                                         @class([
                                             'w-full text-left p-4 rounded-xl border-2 transition-colors duration-150 flex items-start gap-3',
@@ -393,6 +397,8 @@ new #[Layout('components.layouts.site')] class extends Component
                                     @if ($creditUsableForOrder)
                                         <button
                                             type="button"
+                                            role="radio"
+                                            aria-checked="{{ $paymentMethod === 'selbuildi_credit' ? 'true' : 'false' }}"
                                             wire:click="$set('paymentMethod', 'selbuildi_credit')"
                                             @class([
                                                 'w-full text-left p-4 rounded-xl border-2 transition-colors duration-150 flex items-start gap-3',

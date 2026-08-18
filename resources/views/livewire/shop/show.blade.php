@@ -45,7 +45,56 @@ new #[Layout('components.layouts.site')] class extends Component
                 ->get(),
         ];
     }
+
+    /**
+     * Product pages are the highest-value SEO surface - people search for
+     * the specific material, not the brand - so the title/description are
+     * generated per-product rather than using the layout's static default.
+     * parent::render() (Volt's own) resolves the co-located Blade template;
+     * ->title()/->layoutData() are Livewire's page-component macros for
+     * overriding params merged into the #[Layout] component.
+     */
+    public function render(): mixed
+    {
+        $product = $this->product;
+        $supplier = $product->supplierProfile?->business_name;
+
+        return parent::render()
+            ->title("{$product->name} — Buy Online in Cameroon | Selbuildi")
+            ->layoutData([
+                'description' => "{$product->name} for {$product->formattedPrice()} per {$product->unit}".
+                    ($supplier ? " from {$supplier}." : '.').
+                    ' Order online with delivery tracking across Cameroon.',
+            ]);
+    }
 }; ?>
+
+@push('structured-data')
+<script type="application/ld+json">
+{!! json_encode([
+    '@@context' => 'https://schema.org',
+    '@@type' => 'Product',
+    'name' => $product->name,
+    'description' => $product->description ?: $product->name,
+    'sku' => $product->sku,
+    'category' => $product->category->name,
+    ...($product->images->isNotEmpty() ? ['image' => $product->images->map(fn ($image) => asset('storage/'.$image->path))->all()] : []),
+    'offers' => [
+        '@@type' => 'Offer',
+        'priceCurrency' => 'XAF',
+        'price' => $product->price,
+        'availability' => $product->is_active ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        'url' => url()->current(),
+        ...($product->supplierProfile ? [
+            'seller' => [
+                '@@type' => 'Organization',
+                'name' => $product->supplierProfile->business_name,
+            ],
+        ] : []),
+    ],
+]) !!}
+</script>
+@endpush
 
 <div>
     <div class="pt-28 pb-6 bg-neutral-50 border-b border-navy-100">
@@ -75,7 +124,7 @@ new #[Layout('components.layouts.site')] class extends Component
 
                 <!-- Details -->
                 <x-reveal :delay="100">
-                    <p class="text-sm font-semibold text-gold-600 uppercase tracking-wide">{{ $product->category->name }}</p>
+                    <p class="text-sm font-semibold text-gold-800 uppercase tracking-wide">{{ $product->category->name }}</p>
                     <h1 class="mt-2 font-heading text-3xl font-bold text-navy-900">{{ $product->name }}</h1>
 
                     <a href="{{ route('suppliers.show', $product->supplierProfile) }}" wire:navigate class="mt-3 inline-flex items-center gap-2 text-sm text-navy-500 hover:text-gold-600 transition-colors">
@@ -103,9 +152,9 @@ new #[Layout('components.layouts.site')] class extends Component
                     <!-- Quantity + CTA -->
                     <div class="mt-8 flex items-center gap-4">
                         <div class="flex items-center border border-navy-200 rounded-lg">
-                            <button type="button" wire:click="decrement" class="w-10 h-10 flex items-center justify-center text-navy-500 hover:text-navy-900 transition-colors">&minus;</button>
-                            <span class="w-12 text-center font-semibold text-navy-900">{{ $quantity }}</span>
-                            <button type="button" wire:click="increment" class="w-10 h-10 flex items-center justify-center text-navy-500 hover:text-navy-900 transition-colors">&plus;</button>
+                            <button type="button" wire:click="decrement" aria-label="Decrease quantity" class="w-10 h-10 flex items-center justify-center text-navy-500 hover:text-navy-900 transition-colors">&minus;</button>
+                            <span class="w-12 text-center font-semibold text-navy-900" aria-live="polite">{{ $quantity }}</span>
+                            <button type="button" wire:click="increment" aria-label="Increase quantity" class="w-10 h-10 flex items-center justify-center text-navy-500 hover:text-navy-900 transition-colors">&plus;</button>
                         </div>
 
                         <x-primary-button

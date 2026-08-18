@@ -8,7 +8,10 @@ use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
 
-new #[Layout('components.layouts.site')] class extends Component
+new #[Layout('components.layouts.site', [
+    'title' => 'Shop Building Materials Online in Cameroon — Selbuildi',
+    'description' => 'Browse cement, roofing sheets, steel & rebar, tiles, and blocks from verified suppliers across Cameroon. Compare prices and order with real-time delivery tracking.',
+])] class extends Component
 {
     use WithPagination;
 
@@ -172,7 +175,7 @@ new #[Layout('components.layouts.site')] class extends Component
                                         @endif
                                     </div>
                                     <div class="px-5 pt-5">
-                                        <p class="text-[11px] font-semibold text-gold-600 uppercase tracking-wide">{{ $product->category->name }}</p>
+                                        <p class="text-[11px] font-semibold text-gold-800 uppercase tracking-wide">{{ $product->category->name }}</p>
                                         <h3 class="mt-1 font-semibold text-navy-900 text-sm leading-snug">{{ $product->name }}</h3>
                                         <p class="text-xs text-navy-400 mt-1">per {{ $product->unit }} &middot; {{ $product->supplierProfile->business_name }}</p>
                                     </div>

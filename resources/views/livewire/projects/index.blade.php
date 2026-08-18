@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.site')] class extends Component
+new #[Layout('components.layouts.site', ['noindex' => true])] class extends Component
 {
     public bool $showCreateForm = false;
 
