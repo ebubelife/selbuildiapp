@@ -1,0 +1,90 @@
+<?php
+
+namespace App\Filament\Resources\Users;
+
+use App\Filament\Resources\Users\Pages\ManageUsers;
+use App\Models\User;
+use BackedEnum;
+use UnitEnum;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Support\Facades\Hash;
+
+class UserResource extends Resource
+{
+    protected static ?string $model = User::class;
+
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
+
+    protected static UnitEnum|string|null $navigationGroup = 'Verification';
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                TextInput::make('name')->required()->maxLength(255),
+                TextInput::make('email')->email()->required()->maxLength(255),
+                TextInput::make('phone')->maxLength(30),
+                Select::make('role')
+                    ->options([
+                        'customer' => 'Customer',
+                        'contractor' => 'Contractor',
+                        'supplier' => 'Supplier',
+                        'admin' => 'Admin',
+                    ])
+                    ->required(),
+                TextInput::make('password')
+                    ->password()
+                    ->revealable()
+                    ->helperText('Leave blank to keep the current password when editing.')
+                    ->requiredOnCreate()
+                    ->dehydrateStateUsing(fn (string $state) => Hash::make($state))
+                    ->dehydrated(fn (?string $state) => filled($state)),
+            ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('name')->searchable()->sortable(),
+                TextColumn::make('email')->searchable(),
+                BadgeColumn::make('role')
+                    ->colors([
+                        'gray' => 'customer',
+                        'info' => 'contractor',
+                        'warning' => 'supplier',
+                        'success' => 'admin',
+                    ]),
+                TextColumn::make('trustScore.tier')->label('Trust Tier')->default('unrated'),
+                TextColumn::make('created_at')->label('Joined')->date()->sortable(),
+            ])
+            ->defaultSort('created_at', 'desc')
+            ->filters([
+                SelectFilter::make('role')->options([
+                    'customer' => 'Customer',
+                    'contractor' => 'Contractor',
+                    'supplier' => 'Supplier',
+                    'admin' => 'Admin',
+                ]),
+            ])
+            ->recordActions([
+                EditAction::make(),
+            ]);
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => ManageUsers::route('/'),
+        ];
+    }
+}
