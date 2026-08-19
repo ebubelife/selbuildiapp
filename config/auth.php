@@ -42,6 +42,16 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Separate session from the storefront's 'web' guard, so an admin's
+        // login is entirely independent of any customer/contractor/supplier
+        // session - including impersonation (see ImpersonationController),
+        // which relies on this isolation to leave the admin's own session
+        // untouched while logged into a shopper's account on 'web'.
+        'admin' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
     ],
 
     /*

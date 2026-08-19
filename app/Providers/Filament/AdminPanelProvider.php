@@ -29,6 +29,11 @@ class AdminPanelProvider extends PanelProvider
             ->path('s/admin/build')
             ->brandName('Selbuildi Admin')
             ->login()
+            // A dedicated guard/session, entirely separate from the
+            // storefront's 'web' guard used by customers/contractors/
+            // suppliers - an admin's login has nothing to do with, and
+            // isn't affected by, any shopper session in the same browser.
+            ->authGuard('admin')
             ->colors([
                 'primary' => Color::hex('#D99400'),
                 'gray' => Color::hex('#0A1B47'),

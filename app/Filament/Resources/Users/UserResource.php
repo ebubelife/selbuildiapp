@@ -8,6 +8,7 @@ use App\Models\Country;
 use App\Models\User;
 use BackedEnum;
 use UnitEnum;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -96,6 +97,14 @@ class UserResource extends Resource
                 static::dateRangeFilter('created_at', 'Joined'),
             ])
             ->recordActions([
+                Action::make('impersonate')
+                    ->label('Log in as')
+                    ->icon(Heroicon::OutlinedArrowRightOnRectangle)
+                    ->color('gray')
+                    ->url(fn (User $record) => route('impersonation.start', $record))
+                    ->openUrlInNewTab()
+                    ->requiresConfirmation()
+                    ->modalDescription(fn (User $record) => "You'll be logged into {$record->name}'s account in a new tab. Your admin session stays active here."),
                 EditAction::make(),
             ]);
     }

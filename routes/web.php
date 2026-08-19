@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DeployController;
+use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\SitemapController;
 use App\Models\Category;
 use App\Models\Product;
@@ -8,6 +9,14 @@ use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 Route::post('deploy-hook', [DeployController::class, 'run'])->name('deploy-hook');
+
+Route::get('impersonate/{user}', [ImpersonationController::class, 'start'])
+    ->middleware('auth:admin')
+    ->name('impersonation.start');
+
+Route::post('stop-impersonating', [ImpersonationController::class, 'stop'])
+    ->middleware('auth:web')
+    ->name('impersonation.stop');
 
 Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 

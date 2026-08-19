@@ -23,16 +23,21 @@ class AdminPanelTest extends TestCase
 
     public function test_a_non_admin_cannot_access_the_panel(): void
     {
+        // The customer is authenticated on the storefront's 'web' guard,
+        // which has nothing to do with the panel's separate 'admin' guard -
+        // so this isn't "authenticated but forbidden" anymore, it's simply
+        // not authenticated on 'admin' at all, hence a redirect to login
+        // rather than a 403.
         $user = User::factory()->create(['role' => 'customer']);
         $this->actingAs($user);
 
-        $this->get('/s/admin/build')->assertForbidden();
+        $this->get('/s/admin/build')->assertRedirect();
     }
 
     public function test_an_admin_can_access_the_panel(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $this->actingAs($admin);
+        $this->actingAs($admin, 'admin');
 
         $this->get('/s/admin/build')->assertOk();
     }
@@ -46,7 +51,7 @@ class AdminPanelTest extends TestCase
             'slug' => 'test-supplier-co-'.uniqid(),
         ]);
 
-        $this->actingAs($admin);
+        $this->actingAs($admin, 'admin');
 
         Livewire::test(ManageSupplierProfiles::class)
             ->callTableAction('verify', $supplier);
@@ -63,7 +68,7 @@ class AdminPanelTest extends TestCase
             'verification_status' => 'pending',
         ]);
 
-        $this->actingAs($admin);
+        $this->actingAs($admin, 'admin');
 
         Livewire::test(ManageContractorProfiles::class)
             ->callTableAction('approve', $contractor);
@@ -82,7 +87,7 @@ class AdminPanelTest extends TestCase
             'verification_status' => 'pending',
         ]);
 
-        $this->actingAs($admin);
+        $this->actingAs($admin, 'admin');
 
         Livewire::test(ManageContractorProfiles::class)
             ->callTableAction('reject', $contractor);
@@ -101,7 +106,7 @@ class AdminPanelTest extends TestCase
             'status' => 'pending',
         ]);
 
-        $this->actingAs($admin);
+        $this->actingAs($admin, 'admin');
 
         Livewire::test(ManageCreditAccounts::class)
             ->callTableAction('approve', $account, data: ['limit' => 75000]);
@@ -123,7 +128,7 @@ class AdminPanelTest extends TestCase
             'status' => 'pending',
         ]);
 
-        $this->actingAs($admin);
+        $this->actingAs($admin, 'admin');
 
         Livewire::test(ManageCreditAccounts::class)
             ->callTableAction('reject', $account);
@@ -150,7 +155,7 @@ class AdminPanelTest extends TestCase
             'placed_at' => now(),
         ]);
 
-        $this->actingAs($admin);
+        $this->actingAs($admin, 'admin');
 
         Livewire::test(ManageOrders::class)
             ->callTableAction('updateStatus', $order, data: [
@@ -171,7 +176,7 @@ class AdminPanelTest extends TestCase
     public function test_orders_resource_has_no_create_action(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $this->actingAs($admin);
+        $this->actingAs($admin, 'admin');
 
         Livewire::test(ManageOrders::class)
             ->assertActionDoesNotExist('create');
@@ -185,7 +190,7 @@ class AdminPanelTest extends TestCase
         $recentOrder = $this->makeOrder($customer, now()->subDay());
         $oldOrder = $this->makeOrder($customer, now()->subDays(30));
 
-        $this->actingAs($admin);
+        $this->actingAs($admin, 'admin');
 
         Livewire::test(ManageOrders::class)
             ->filterTable('placed_at', ['from' => now()->subDays(3)->toDateString()])
@@ -199,7 +204,7 @@ class AdminPanelTest extends TestCase
         $customer = User::factory()->create(['role' => 'customer']);
         $order = $this->makeOrder($customer, now());
 
-        $this->actingAs($admin);
+        $this->actingAs($admin, 'admin');
 
         Livewire::test(ManageOrders::class)
             ->callTableAction('updateStatus', $order, data: ['status' => 'confirmed']);
@@ -216,7 +221,7 @@ class AdminPanelTest extends TestCase
     public function test_a_super_admin_can_create_another_admin(): void
     {
         $superAdmin = User::factory()->create(['role' => 'super_admin']);
-        $this->actingAs($superAdmin);
+        $this->actingAs($superAdmin, 'admin');
 
         Livewire::test(ManageAdmins::class)
             ->assertActionVisible('create');
@@ -226,7 +231,7 @@ class AdminPanelTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $otherAdmin = User::factory()->create(['role' => 'admin']);
-        $this->actingAs($admin);
+        $this->actingAs($admin, 'admin');
 
         Livewire::test(ManageAdmins::class)
             ->assertActionHidden('create')
@@ -238,7 +243,7 @@ class AdminPanelTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $customer = User::factory()->create(['role' => 'customer']);
-        $this->actingAs($admin);
+        $this->actingAs($admin, 'admin');
 
         Livewire::test(ManageUsers::class)
             ->assertCanSeeTableRecords([$customer])
@@ -250,7 +255,7 @@ class AdminPanelTest extends TestCase
         $superAdmin = User::factory()->create(['role' => 'super_admin']);
         $admin = User::factory()->create(['role' => 'admin']);
         $customer = User::factory()->create(['role' => 'customer']);
-        $this->actingAs($superAdmin);
+        $this->actingAs($superAdmin, 'admin');
 
         Livewire::test(ManageAdmins::class)
             ->assertCanSeeTableRecords([$superAdmin, $admin])
