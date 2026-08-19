@@ -17,6 +17,7 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Hash;
 
 class UserResource extends Resource
@@ -26,6 +27,14 @@ class UserResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 
     protected static UnitEnum|string|null $navigationGroup = 'Verification';
+
+    // Admins and super admins are managed separately in AdminResource -
+    // they're staff accounts, not marketplace participants, and shouldn't
+    // be mixed into (or promotable from) this list.
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->whereNotIn('role', ['admin', 'super_admin']);
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -39,7 +48,6 @@ class UserResource extends Resource
                         'customer' => 'Customer',
                         'contractor' => 'Contractor',
                         'supplier' => 'Supplier',
-                        'admin' => 'Admin',
                     ])
                     ->required(),
                 Select::make('country')
@@ -71,7 +79,6 @@ class UserResource extends Resource
                         'gray' => 'customer',
                         'info' => 'contractor',
                         'warning' => 'supplier',
-                        'success' => 'admin',
                     ]),
                 TextColumn::make('trustScore.tier')->label('Trust Tier')->default('unrated'),
                 TextColumn::make('created_at')->label('Joined')->date()->sortable(),
@@ -82,7 +89,6 @@ class UserResource extends Resource
                     'customer' => 'Customer',
                     'contractor' => 'Contractor',
                     'supplier' => 'Supplier',
-                    'admin' => 'Admin',
                 ]),
             ])
             ->recordActions([
