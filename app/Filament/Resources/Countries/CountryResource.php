@@ -15,6 +15,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 use UnitEnum;
 
 class CountryResource extends Resource
@@ -32,6 +33,10 @@ class CountryResource extends Resource
                 TextInput::make('name')->required()->maxLength(255)->unique(ignoreRecord: true),
                 TextInput::make('code')
                     ->label('ISO Code')
+                    ->helperText(new HtmlString(
+                        'The 2-letter country code, e.g. "NG" for Nigeria. Look it up on the '.
+                        '<a href="https://www.iso.org/obp/ui/#search/code/" target="_blank" rel="noopener" class="underline">ISO 3166 country code list</a>.'
+                    ))
                     ->required()
                     ->length(2)
                     ->alpha()
