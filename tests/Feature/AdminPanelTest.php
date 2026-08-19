@@ -24,7 +24,7 @@ class AdminPanelTest extends TestCase
         $user = User::factory()->create(['role' => 'customer']);
         $this->actingAs($user);
 
-        $this->get('/admin')->assertForbidden();
+        $this->get('/s/admin/build')->assertForbidden();
     }
 
     public function test_an_admin_can_access_the_panel(): void
@@ -32,7 +32,7 @@ class AdminPanelTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $this->actingAs($admin);
 
-        $this->get('/admin')->assertOk();
+        $this->get('/s/admin/build')->assertOk();
     }
 
     public function test_admin_can_verify_a_pending_supplier(): void

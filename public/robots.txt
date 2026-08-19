@@ -7,6 +7,6 @@ Disallow: /credit
 Disallow: /supplier/
 Disallow: /dashboard
 Disallow: /profile
-Disallow: /admin
+Disallow: /s/
 
 Sitemap: https://selbuildi.com/sitemap.xml
