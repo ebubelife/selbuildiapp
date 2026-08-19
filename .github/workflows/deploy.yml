@@ -27,9 +27,6 @@ jobs:
           extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, mysql, pdo_mysql
           coverage: none
 
-      - name: Install PHP dependencies (production)
-        run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction --no-progress
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -47,19 +44,20 @@ jobs:
       # avoids ever needing the server to run a command: scp -r places files
       # directly, no remote tar/extract step required.
       #
-      # vendor/ IS built and shipped here (unlike an earlier iteration of
-      # this workflow) - the /deploy-hook route below is itself part of this
-      # app, so it can't be what installs vendor/ on the very first deploy;
-      # something needs to put vendor/ in place before Laravel can boot at
-      # all. scp already proved reliable for smaller payloads; betting that
-      # rsync's own bidirectional protocol overhead - not sheer size - was
-      # what got killed before.
+      # vendor/ is deliberately NOT shipped: once Filament joined the
+      # dependency tree, its file count made the scp upload step time out
+      # (thousands of extra small files - scp round-trips per file rather
+      # than batching, which shared-hosting latency punishes hard). vendor/
+      # is installed on the server directly over an interactive SSH session
+      # instead (composer install --no-dev --optimize-autoloader), and only
+      # needs re-running there when composer.lock changes.
       - name: Stage app files (excluding dev-only paths)
         run: |
           mkdir -p /tmp/stage-app
           rsync -a \
             --exclude=.git \
             --exclude=node_modules \
+            --exclude=vendor \
             --exclude=tests \
             --exclude=.github \
             --exclude=public \
