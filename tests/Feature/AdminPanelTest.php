@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\Admins\Pages\ManageAdmins;
 use App\Filament\Resources\ContractorProfiles\Pages\ManageContractorProfiles;
 use App\Filament\Resources\CreditAccounts\Pages\ManageCreditAccounts;
 use App\Filament\Resources\Orders\Pages\ManageOrders;
 use App\Filament\Resources\SupplierProfiles\Pages\ManageSupplierProfiles;
+use App\Filament\Resources\Users\Pages\ManageUsers;
 use App\Models\CreditAccount;
 use App\Models\ContractorProfile;
 use App\Models\Order;
@@ -173,5 +175,103 @@ class AdminPanelTest extends TestCase
 
         Livewire::test(ManageOrders::class)
             ->assertActionDoesNotExist('create');
+    }
+
+    public function test_orders_can_be_filtered_by_placed_date(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $customer = User::factory()->create(['role' => 'customer']);
+
+        $recentOrder = $this->makeOrder($customer, now()->subDay());
+        $oldOrder = $this->makeOrder($customer, now()->subDays(30));
+
+        $this->actingAs($admin);
+
+        Livewire::test(ManageOrders::class)
+            ->filterTable('placed_at', ['from' => now()->subDays(3)->toDateString()])
+            ->assertCanSeeTableRecords([$recentOrder])
+            ->assertCanNotSeeTableRecords([$oldOrder]);
+    }
+
+    public function test_viewing_an_order_shows_its_status_history(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $customer = User::factory()->create(['role' => 'customer']);
+        $order = $this->makeOrder($customer, now());
+
+        $this->actingAs($admin);
+
+        Livewire::test(ManageOrders::class)
+            ->callTableAction('updateStatus', $order, data: ['status' => 'confirmed']);
+
+        // Mounting the view action renders the status-history infolist
+        // schema (Section/RepeatableEntry/TextEntry) against the order's
+        // real statusHistory relation - it would throw if that schema
+        // were broken.
+        Livewire::test(ManageOrders::class)
+            ->mountTableAction('view', $order)
+            ->assertOk();
+    }
+
+    public function test_a_super_admin_can_create_another_admin(): void
+    {
+        $superAdmin = User::factory()->create(['role' => 'super_admin']);
+        $this->actingAs($superAdmin);
+
+        Livewire::test(ManageAdmins::class)
+            ->assertActionVisible('create');
+    }
+
+    public function test_a_plain_admin_cannot_create_edit_or_delete_admins(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $otherAdmin = User::factory()->create(['role' => 'admin']);
+        $this->actingAs($admin);
+
+        Livewire::test(ManageAdmins::class)
+            ->assertActionHidden('create')
+            ->assertTableActionHidden('edit', $otherAdmin)
+            ->assertTableActionHidden('delete', $otherAdmin);
+    }
+
+    public function test_admins_do_not_appear_in_the_regular_users_list(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $customer = User::factory()->create(['role' => 'customer']);
+        $this->actingAs($admin);
+
+        Livewire::test(ManageUsers::class)
+            ->assertCanSeeTableRecords([$customer])
+            ->assertCanNotSeeTableRecords([$admin]);
+    }
+
+    public function test_the_admins_list_shows_admins_and_super_admins(): void
+    {
+        $superAdmin = User::factory()->create(['role' => 'super_admin']);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $customer = User::factory()->create(['role' => 'customer']);
+        $this->actingAs($superAdmin);
+
+        Livewire::test(ManageAdmins::class)
+            ->assertCanSeeTableRecords([$superAdmin, $admin])
+            ->assertCanNotSeeTableRecords([$customer]);
+    }
+
+    private function makeOrder(User $customer, \Illuminate\Support\Carbon $placedAt): Order
+    {
+        return Order::create([
+            'order_number' => 'SB-TEST-'.uniqid(),
+            'user_id' => $customer->id,
+            'status' => 'pending',
+            'subtotal' => 9500,
+            'shipping_fee' => 0,
+            'tax' => 0,
+            'discount' => 0,
+            'total' => 9500,
+            'currency' => 'XAF',
+            'payment_status' => 'pending',
+            'payment_method' => 'cash_on_delivery',
+            'placed_at' => $placedAt,
+        ]);
     }
 }

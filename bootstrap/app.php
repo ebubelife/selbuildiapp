@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\TrackPageView;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,6 +15,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->validateCsrfTokens(except: [
             'deploy-hook',
+        ]);
+
+        $middleware->web(append: [
+            TrackPageView::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

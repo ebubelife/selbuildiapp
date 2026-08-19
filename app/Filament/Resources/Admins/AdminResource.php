@@ -17,6 +17,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -47,24 +48,35 @@ class AdminResource extends Resource
     // super_admin via the role field) would be a privilege escalation
     // path. Viewing the list stays open to any admin (default/unrestricted,
     // same as every other resource here since no policy is registered).
-    public static function canCreate(): bool
+    //
+    // These override the *AuthorizationResponse() methods rather than the
+    // can*() booleans - can*() just calls through to these, but it's the
+    // response methods that Filament's action-hiding logic (getDefaultAction
+    // AuthorizationResponse() on the resource page) actually consults, so
+    // overriding only the booleans silently leaves the UI unrestricted.
+    protected static function superAdminOnlyResponse(): Response
     {
-        return Auth::user()?->isSuperAdmin() ?? false;
+        return (Auth::user()?->isSuperAdmin() ?? false) ? Response::allow() : Response::deny();
     }
 
-    public static function canEdit(Model $record): bool
+    public static function getCreateAuthorizationResponse(): Response
     {
-        return Auth::user()?->isSuperAdmin() ?? false;
+        return static::superAdminOnlyResponse();
     }
 
-    public static function canDelete(Model $record): bool
+    public static function getEditAuthorizationResponse(Model $record): Response
     {
-        return Auth::user()?->isSuperAdmin() ?? false;
+        return static::superAdminOnlyResponse();
     }
 
-    public static function canDeleteAny(): bool
+    public static function getDeleteAuthorizationResponse(Model $record): Response
     {
-        return Auth::user()?->isSuperAdmin() ?? false;
+        return static::superAdminOnlyResponse();
+    }
+
+    public static function getDeleteAnyAuthorizationResponse(): Response
+    {
+        return static::superAdminOnlyResponse();
     }
 
     public static function form(Schema $schema): Schema
@@ -83,7 +95,7 @@ class AdminResource extends Resource
                     ->password()
                     ->revealable()
                     ->helperText('Leave blank to keep the current password when editing.')
-                    ->requiredOnCreate()
+                    ->required(fn (string $operation): bool => $operation === 'create')
                     ->dehydrateStateUsing(fn (string $state) => Hash::make($state))
                     ->dehydrated(fn (?string $state) => filled($state)),
             ]);

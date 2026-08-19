@@ -35,7 +35,7 @@ class CountryResource extends Resource
                     ->required()
                     ->length(2)
                     ->alpha()
-                    ->uppercase()
+                    ->formatStateUsing(fn (?string $state) => $state ? strtoupper($state) : $state)
                     ->dehydrateStateUsing(fn (string $state) => strtoupper($state))
                     ->unique(ignoreRecord: true),
             ]);

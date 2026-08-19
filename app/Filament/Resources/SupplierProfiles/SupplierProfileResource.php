@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SupplierProfiles;
 
+use App\Filament\Concerns\HasDateRangeFilter;
 use App\Filament\Resources\SupplierProfiles\Pages\ManageSupplierProfiles;
 use App\Models\SupplierProfile;
 use BackedEnum;
@@ -20,6 +21,8 @@ use Filament\Tables\Table;
 
 class SupplierProfileResource extends Resource
 {
+    use HasDateRangeFilter;
+
     protected static ?string $model = SupplierProfile::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingStorefront;
@@ -56,6 +59,7 @@ class SupplierProfileResource extends Resource
                     ->nullable()
                     ->trueLabel('Verified')
                     ->falseLabel('Pending'),
+                static::dateRangeFilter('created_at', 'Registered'),
             ])
             ->recordActions([
                 Action::make('verify')

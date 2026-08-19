@@ -2,16 +2,21 @@
 
 namespace App\Filament\Resources\Orders;
 
+use App\Filament\Concerns\HasDateRangeFilter;
 use App\Filament\Resources\Orders\Pages\ManageOrders;
 use App\Models\Order;
 use App\Services\OrderFulfillmentService;
 use BackedEnum;
 use UnitEnum;
 use Filament\Actions\Action;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\BadgeColumn;
@@ -22,6 +27,8 @@ use Illuminate\Support\Facades\Auth;
 
 class OrderResource extends Resource
 {
+    use HasDateRangeFilter;
+
     protected static ?string $model = Order::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingBag;
@@ -57,8 +64,35 @@ class OrderResource extends Resource
             ->defaultSort('placed_at', 'desc')
             ->filters([
                 SelectFilter::make('status')->options(array_combine(Order::STATUSES, array_map('ucfirst', Order::STATUSES))),
+                static::dateRangeFilter('placed_at', 'Order Date'),
             ])
             ->recordActions([
+                ViewAction::make()
+                    ->label('History')
+                    ->icon(Heroicon::OutlinedClock)
+                    ->schema([
+                        Section::make('Order')
+                            ->schema([
+                                TextEntry::make('order_number'),
+                                TextEntry::make('user.name')->label('Customer'),
+                                TextEntry::make('status')->badge(),
+                                TextEntry::make('placed_at')->label('Placed')->dateTime('M j, Y g:i:s A'),
+                            ])
+                            ->columns(4),
+                        Section::make('Status History')
+                            ->description('Exact time of every status change, oldest first.')
+                            ->schema([
+                                RepeatableEntry::make('statusHistory')
+                                    ->label('')
+                                    ->schema([
+                                        TextEntry::make('status')->badge(),
+                                        TextEntry::make('note')->placeholder('—'),
+                                        TextEntry::make('changedBy.name')->label('Changed by')->placeholder('System'),
+                                        TextEntry::make('created_at')->label('At')->dateTime('M j, Y g:i:s A'),
+                                    ])
+                                    ->columns(4),
+                            ]),
+                    ]),
                 Action::make('updateStatus')
                     ->label('Update Status')
                     ->icon(Heroicon::OutlinedArrowPath)

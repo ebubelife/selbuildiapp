@@ -33,10 +33,9 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::hex('#D99400'),
                 'gray' => Color::hex('#0A1B47'),
             ])
-            // Deep navy chrome is the brand's admin identity - open the
-            // panel in dark mode by default so that shows up immediately
-            // rather than requiring a manual toggle.
-            ->defaultThemeMode(ThemeMode::Dark)
+            // Clean white chrome by default; the built-in toggle still
+            // lets each admin switch to dark (navy) if they prefer it.
+            ->defaultThemeMode(ThemeMode::Light)
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([

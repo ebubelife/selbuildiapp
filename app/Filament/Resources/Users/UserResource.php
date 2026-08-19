@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users;
 
+use App\Filament\Concerns\HasDateRangeFilter;
 use App\Filament\Resources\Users\Pages\ManageUsers;
 use App\Models\Country;
 use App\Models\User;
@@ -22,6 +23,8 @@ use Illuminate\Support\Facades\Hash;
 
 class UserResource extends Resource
 {
+    use HasDateRangeFilter;
+
     protected static ?string $model = User::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
@@ -62,7 +65,7 @@ class UserResource extends Resource
                     ->password()
                     ->revealable()
                     ->helperText('Leave blank to keep the current password when editing.')
-                    ->requiredOnCreate()
+                    ->required(fn (string $operation): bool => $operation === 'create')
                     ->dehydrateStateUsing(fn (string $state) => Hash::make($state))
                     ->dehydrated(fn (?string $state) => filled($state)),
             ]);
@@ -90,6 +93,7 @@ class UserResource extends Resource
                     'contractor' => 'Contractor',
                     'supplier' => 'Supplier',
                 ]),
+                static::dateRangeFilter('created_at', 'Joined'),
             ])
             ->recordActions([
                 EditAction::make(),

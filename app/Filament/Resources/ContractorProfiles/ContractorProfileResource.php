@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ContractorProfiles;
 
+use App\Filament\Concerns\HasDateRangeFilter;
 use App\Filament\Resources\ContractorProfiles\Pages\ManageContractorProfiles;
 use App\Models\ContractorProfile;
 use BackedEnum;
@@ -21,6 +22,8 @@ use Illuminate\Support\Facades\Storage;
 
 class ContractorProfileResource extends Resource
 {
+    use HasDateRangeFilter;
+
     protected static ?string $model = ContractorProfile::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedIdentification;
@@ -67,6 +70,7 @@ class ContractorProfileResource extends Resource
                     'verified' => 'Verified',
                     'rejected' => 'Rejected',
                 ]),
+                static::dateRangeFilter('created_at', 'Applied'),
             ])
             ->recordActions([
                 Action::make('downloadId')
