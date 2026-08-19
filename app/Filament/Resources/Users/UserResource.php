@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users;
 
 use App\Filament\Resources\Users\Pages\ManageUsers;
+use App\Models\Country;
 use App\Models\User;
 use BackedEnum;
 use UnitEnum;
@@ -41,6 +42,14 @@ class UserResource extends Resource
                         'admin' => 'Admin',
                     ])
                     ->required(),
+                Select::make('country')
+                    ->label('Country of Residence')
+                    ->options(fn () => Country::orderBy('name')->pluck('name', 'name'))
+                    ->searchable(),
+                Select::make('project_country')
+                    ->label('Project Country')
+                    ->options(fn () => Country::orderBy('name')->pluck('name', 'name'))
+                    ->searchable(),
                 TextInput::make('password')
                     ->password()
                     ->revealable()

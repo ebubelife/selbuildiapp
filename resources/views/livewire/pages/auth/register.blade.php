@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Country;
 use App\Models\User;
 use App\Services\CartService;
 use Illuminate\Auth\Events\Registered;
@@ -65,12 +66,12 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
         if (in_array($this->role, ['customer', 'contractor'], true)) {
             $rules['first_name'] = ['required', 'string', 'max:255'];
             $rules['last_name'] = ['required', 'string', 'max:255'];
-            $rules['country'] = ['required', 'string', 'max:255'];
+            $rules['country'] = ['required', 'string', 'exists:countries,name'];
             $rules['city'] = ['required', 'string', 'max:255'];
         }
 
         if ($this->role === 'customer') {
-            $rules['project_country'] = ['required', 'string', 'max:255'];
+            $rules['project_country'] = ['required', 'string', 'exists:countries,name'];
             $rules['account_type'] = ['required', 'in:individual,diaspora_buyer,property_developer'];
             $rules['preferred_currency'] = ['required', 'in:XAF,USD,EUR,GBP'];
         }
@@ -150,6 +151,13 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
         app(CartService::class)->mergeSessionCartInto($user, $guestSessionId);
 
         $this->redirect(route('dashboard', absolute: false), navigate: true);
+    }
+
+    public function with(): array
+    {
+        return [
+            'countries' => Country::orderBy('name')->pluck('name'),
+        ];
     }
 }; ?>
 
@@ -275,7 +283,12 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
         <div x-show="role !== 'supplier'" x-cloak class="mt-4 grid sm:grid-cols-2 gap-4">
             <div>
                 <x-input-label for="country" x-text="role === 'contractor' ? 'Country' : 'Country of Residence'" />
-                <x-text-input wire:model="country" id="country" class="block mt-1 w-full" type="text" />
+                <select wire:model="country" id="country" class="mt-1 block w-full rounded-lg border-navy-200 focus:border-gold-500 focus:ring-gold-500 text-sm">
+                    <option value="">Select a country&hellip;</option>
+                    @foreach ($countries as $countryName)
+                        <option value="{{ $countryName }}">{{ $countryName }}</option>
+                    @endforeach
+                </select>
                 <x-input-error :messages="$errors->get('country')" class="mt-2" />
             </div>
             <div>
@@ -289,7 +302,12 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
         <div x-show="role === 'customer'" x-cloak>
             <div class="mt-4">
                 <x-input-label for="project_country" value="Country Where the Construction Project is Located" />
-                <x-text-input wire:model="project_country" id="project_country" class="block mt-1 w-full" type="text" />
+                <select wire:model="project_country" id="project_country" class="mt-1 block w-full rounded-lg border-navy-200 focus:border-gold-500 focus:ring-gold-500 text-sm">
+                    <option value="">Select a country&hellip;</option>
+                    @foreach ($countries as $countryName)
+                        <option value="{{ $countryName }}">{{ $countryName }}</option>
+                    @endforeach
+                </select>
                 <x-input-error :messages="$errors->get('project_country')" class="mt-2" />
             </div>
 
