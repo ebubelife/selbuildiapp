@@ -75,6 +75,12 @@ new class extends Component
                     </x-slot>
 
                     <x-slot name="content">
+                        @unless (auth()->user()->isSupplier())
+                            <x-dropdown-link :href="route('addresses.index')" wire:navigate>
+                                {{ __('My Addresses') }}
+                            </x-dropdown-link>
+                        @endunless
+
                         <x-dropdown-link :href="route('profile')" wire:navigate>
                             {{ __('Profile') }}
                         </x-dropdown-link>
@@ -120,6 +126,9 @@ new class extends Component
             @unless (auth()->user()->isSupplier())
                 <x-responsive-nav-link :href="route('credit.index')" :active="request()->routeIs('credit.*')" wire:navigate>
                     {{ __('My Credit') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('addresses.index')" :active="request()->routeIs('addresses.*')" wire:navigate>
+                    {{ __('My Addresses') }}
                 </x-responsive-nav-link>
             @endunless
             @if (auth()->user()->isSupplier())

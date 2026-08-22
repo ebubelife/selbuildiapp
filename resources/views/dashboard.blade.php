@@ -57,6 +57,26 @@
                     </div>
                 </div>
             @else
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                    @foreach ([
+                        ['route' => 'orders.index', 'icon' => 'truck', 'label' => 'Order History'],
+                        ['route' => 'addresses.index', 'icon' => 'map-pin', 'label' => 'My Addresses'],
+                        ['route' => 'credit.index', 'icon' => 'star', 'label' => 'Trust &amp; Credit'],
+                        ['route' => 'profile', 'icon' => 'shield', 'label' => 'Profile &amp; Security'],
+                    ] as $action)
+                        <a
+                            href="{{ route($action['route']) }}"
+                            wire:navigate
+                            class="flex flex-col items-center text-center gap-2 p-4 bg-white rounded-2xl border border-navy-100 hover:border-gold-300 hover:shadow-brand hover:-translate-y-0.5 transition-all duration-200"
+                        >
+                            <span class="flex items-center justify-center w-10 h-10 rounded-full bg-navy-50 text-navy-700">
+                                <x-icon :name="$action['icon']" class="w-4.5 h-4.5" />
+                            </span>
+                            <span class="text-xs font-semibold text-navy-800">{!! $action['label'] !!}</span>
+                        </a>
+                    @endforeach
+                </div>
+
                 @if (auth()->user()->isContractor())
                     @php $contractor = auth()->user()->contractorProfile; @endphp
 

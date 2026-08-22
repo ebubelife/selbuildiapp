@@ -54,6 +54,7 @@ Volt::route('shop/{product:slug}', 'shop.show')->name('shop.show');
 Volt::route('suppliers/{supplier:slug}', 'suppliers.show')->name('suppliers.show');
 
 Route::middleware('auth')->group(function () {
+    Volt::route('addresses', 'addresses.index')->name('addresses.index');
     Volt::route('checkout', 'checkout.index')->name('checkout.index');
     Volt::route('orders', 'orders.index')->name('orders.index');
     Volt::route('orders/{order}', 'orders.show')->name('orders.show');
