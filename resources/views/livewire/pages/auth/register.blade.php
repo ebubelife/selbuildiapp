@@ -7,6 +7,7 @@ use App\Services\CartService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
@@ -147,7 +148,16 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
 
         event(new Registered($user));
 
-        $user->notify(new WelcomeEmail());
+        // The account already saved successfully above - a mail failure
+        // here must never turn a real signup into a 500 for the user.
+        try {
+            $user->notify(new WelcomeEmail());
+        } catch (Throwable $e) {
+            Log::error('WelcomeEmail notification failed to send', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         Auth::login($user);
 

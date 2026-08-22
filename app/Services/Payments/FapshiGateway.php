@@ -7,6 +7,7 @@ use App\Models\PaymentGateway;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class FapshiGateway implements PaymentGatewayContract
@@ -26,8 +27,21 @@ class FapshiGateway implements PaymentGatewayContract
         $link = $response->json('link');
 
         if (! $response->successful() || ! $link) {
+            Log::error('Fapshi initialize failed', [
+                'reference' => $payment->reference,
+                'order_id' => $payment->order_id,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
             throw new RuntimeException('Fapshi did not return a payment link: '.$response->body());
         }
+
+        Log::info('Fapshi payment initialized', [
+            'reference' => $payment->reference,
+            'order_id' => $payment->order_id,
+            'amount' => $payment->amount,
+        ]);
 
         return $link;
     }

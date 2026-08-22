@@ -16,8 +16,9 @@ use Filament\Pages\Page;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Log;
 use UnitEnum;
+use Throwable;
 
 class SendEmail extends Page implements HasForms
 {
@@ -85,18 +86,48 @@ class SendEmail extends Page implements HasForms
             ? User::query()
             : User::where('id', $data['user_id']);
 
-        $count = 0;
+        $sent = 0;
+        $failed = 0;
 
-        $recipients->chunk(200, function ($users) use ($data, &$count) {
-            Notification::send($users, new AdminBroadcastEmail($data['subject'], $data['body']));
-            $count += $users->count();
+        // Sent one at a time (rather than the batch Notification::send())
+        // so one bad address or transient SMTP error only skips that one
+        // recipient, not the rest of the run - and so we get an accurate
+        // sent/failed count to report back and log, on a broadcast this
+        // size that's worth more than the small speed cost.
+        $recipients->chunk(200, function ($users) use ($data, &$sent, &$failed) {
+            foreach ($users as $user) {
+                try {
+                    $user->notify(new AdminBroadcastEmail($data['subject'], $data['body']));
+                    $sent++;
+                } catch (Throwable $e) {
+                    $failed++;
+                    Log::error('AdminBroadcastEmail notification failed to send', [
+                        'user_id' => $user->id,
+                        'email' => $user->email,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
         });
+
+        Log::info('Admin broadcast email finished', [
+            'sent_by' => Auth::guard('admin')->id(),
+            'subject' => $data['subject'],
+            'sent' => $sent,
+            'failed' => $failed,
+        ]);
 
         $this->form->fill(['recipients' => 'all']);
 
+        $title = "Email sent to {$sent} ".str($sent === 1 ? 'user' : 'users').'.';
+
+        if ($failed > 0) {
+            $title .= " {$failed} failed - see logs.";
+        }
+
         FilamentNotification::make()
-            ->title("Email sent to {$count} ".str($count === 1 ? 'user' : 'users').'.')
-            ->success()
+            ->title($title)
+            ->color($failed > 0 ? 'warning' : 'success')
             ->send();
     }
 }

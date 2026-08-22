@@ -292,6 +292,43 @@ To make this work, two files are environment-aware (safe for both local dev and 
 - SSL via Dreamhost's Let's Encrypt panel option — confirmed already working (`https://selbuildi.com` resolves).
 - **Still an open item**: no persistent queue worker or scheduler daemon on shared hosting — anything queued needs `QUEUE_CONNECTION=sync` for now, or a cron-triggered `queue:work --stop-when-empty` / `schedule:run` if Dreamhost cron jobs are available on this plan.
 
+### 8.4 Current status: CI is broken, deploys are manual (as of Aug 2026)
+
+**The `/deploy-hook` route has been 403ing on every CI run since Filament was added** — root cause never fully confirmed, but almost certainly `DEPLOY_HOOK_TOKEN` mismatched between the GitHub secret and the server's `.env` (a secret can never be read back once set, so there's no way to directly compare; the fix is to generate a fresh token and set it in both places at once, not to "check" the old one). Until that's redone, **every deploy is manual** — see the runbook below. `vendor/` is also now deliberately *excluded* from what CI/manual deploys ship (contradicts §8.2 point 2 above, written before Filament joined the dependency tree) — its file count made `scp` time out, so `composer install` now runs directly on the server instead, over an *interactive* SSH session (never non-interactive — that's still the one thing proven unreliable on this account).
+
+**Manual deploy runbook** (from a local machine with SSH access already trusted):
+
+```bash
+# 1. Build assets locally, stage a clean copy (same excludes as CI)
+npm ci && npm run build
+mkdir -p /tmp/stage-app
+rsync -a --exclude=.git --exclude=node_modules --exclude=vendor \
+  --exclude=tests --exclude=.github --exclude=public --exclude=.env \
+  ./ /tmp/stage-app/
+
+# 2. Ship it
+scp -r /tmp/stage-app/. dh_p722sp@pdx1-shared-a1-20.dreamhost.com:selbuildi-app/
+scp -r public/. dh_p722sp@pdx1-shared-a1-20.dreamhost.com:selbuildi.com/
+
+# 3. SSH in and finish the deploy directly (replaces /deploy-hook entirely)
+cd ~/selbuildi-app
+/usr/local/php83/bin/php ~/composer.phar install --no-dev --optimize-autoloader --no-interaction
+/usr/local/php83/bin/php artisan migrate --force
+/usr/local/php83/bin/php artisan config:cache
+/usr/local/php83/bin/php artisan route:cache
+/usr/local/php83/bin/php artisan view:cache
+```
+
+**Known gotchas, hit repeatedly enough to document:**
+
+- **Bare `php`/`composer` resolve to the wrong thing.** The account's default `php` is 8.2.30; the app needs 8.3. Always use the full path: `/usr/local/php83/bin/php`. Composer isn't installed as a system command at all — it's a `composer.phar` sitting in the home directory (`~/composer.phar`), installed once via `curl -sS https://getcomposer.org/installer | php`. Every artisan/composer command on this server needs one of these full paths, not the bare command.
+- **`rsync`/`scp` only ever add or update files — they never delete ones that no longer exist locally.** Removing a file/package locally (e.g. uninstalling a Composer package, deleting a published config file) does **nothing** to the same stale file already on the server. If a file was ever manually removed from the repo, it has to be manually `rm`'d on the server too, or it keeps loading and can break things in ways that look unrelated (see the log-viewer saga below).
+- **`bootstrap/cache/*.php` (package discovery, cached config/routes) can go stale independently of the source code being current**, especially after a `composer install` that adds/removes packages. Symptom: `Class "Some\Package\Thing" not found` even though the source files are demonstrably correct and current. Fix: `rm -f bootstrap/cache/*.php`, then re-run `composer install` (its own `post-autoload-dump` hook regenerates the package list) before re-caching config/routes/views. When in doubt, nuke and rebuild rather than incrementally patching — chasing one stale-cache symptom at a time wastes far more time than a clean rebuild.
+- **Production's `.env` is a separate file, never touched by any sync, and has to be edited by hand for every new setting** — `LOG_STACK=daily`, `DEPLOY_HOOK_TOKEN`, mail credentials, etc. all needed a manual `nano .env` edit on the server; updating `.env.example` in the repo (or the local `.env`) has zero effect on production.
+- **The Log Viewer package's own default config isn't shared-hosting-safe out of the box.** Two separate real bugs, both worth remembering if this package (or a similar one) gets touched again:
+  1. Protecting its routes via a custom `Gate::define(...)` closure checking a custom auth guard was unreliable specifically because the package registers its own separate route group/middleware stack, outside Filament's own request-handling — the same guard check that works everywhere else in the app (e.g. the impersonation route) didn't reliably resolve there. Fix: point the package's own `'middleware'` *and* `'api_middleware'` config arrays directly at Laravel's standard `'auth:admin'` middleware instead of a custom Gate — the same proven pattern already used for the standalone impersonation route.
+  2. Its default `include_files` config globs system-wide paths (`/var/log/httpd/*`, `/var/log/nginx/*`, plus several macOS-only dev paths) alongside the app's own `*.log` files. On this shared-hosting account those paths exist but aren't readable by PHP's user — `fopen()` on whatever matched there returned `false` silently, and the package didn't null-check before passing that into `fgets()`, so *every* file-listing request 500'd regardless of the app's own logs being perfectly fine. Fix: trim `include_files` down to just `'*.log'` / `'**/*.log'`.
+
 ---
 
 ## 9. Roadmap

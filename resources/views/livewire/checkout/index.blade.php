@@ -12,6 +12,7 @@ use App\Services\CreditService;
 use App\Services\Payments\PaymentGatewayManager;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -187,13 +188,44 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
             $creditService->drawdown($creditAccount, $order);
         }
 
-        Auth::user()->notify(new OrderPlaced($order));
+        // A transient mail failure (SMTP hiccup, etc.) must never undo an
+        // order that already saved successfully - log it and carry on
+        // rather than letting the exception turn a real success into a 500.
+        try {
+            Auth::user()->notify(new OrderPlaced($order));
+        } catch (Throwable $e) {
+            Log::error('OrderPlaced notification failed to send', [
+                'order_id' => $order->id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         if ($payment) {
-            $checkoutUrl = $gateways->make($onlineProvider)->initialize(
-                $payment,
-                route('payments.callback', ['provider' => $onlineProvider, 'reference' => $payment->reference])
-            );
+            try {
+                $checkoutUrl = $gateways->make($onlineProvider)->initialize(
+                    $payment,
+                    route('payments.callback', ['provider' => $onlineProvider, 'reference' => $payment->reference])
+                );
+            } catch (Throwable $e) {
+                // The order and payment record both already exist - this
+                // only means the redirect to the provider's hosted page
+                // couldn't be started. Send the customer to their order
+                // instead of a raw 500; they can retry from there once the
+                // provider's API is reachable again.
+                Log::error('Payment initialize failed at checkout', [
+                    'provider' => $onlineProvider,
+                    'order_id' => $order->id,
+                    'payment_id' => $payment->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                session()->flash('paymentError', "We couldn't start your {$payment->provider} payment just now. Your order was saved - please try again from here, or choose a different payment method.");
+
+                $this->redirect(route('orders.show', $order), navigate: true);
+
+                return;
+            }
 
             $this->redirect($checkoutUrl);
 

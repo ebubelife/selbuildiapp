@@ -18,6 +18,14 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
 }; ?>
 
 <div>
+    @if (session('paymentError'))
+        <div class="fixed top-20 inset-x-0 z-40 px-6">
+            <div class="max-w-2xl mx-auto bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 shadow-lg">
+                {{ session('paymentError') }}
+            </div>
+        </div>
+    @endif
+
     <section class="pt-32 pb-16 bg-gradient-to-br from-navy-900 via-navy-800 to-navy-700 text-center">
         <div class="max-w-2xl mx-auto px-6">
             @if ($order->status === 'pending')

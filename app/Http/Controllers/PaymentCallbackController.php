@@ -6,6 +6,7 @@ use App\Models\Payment;
 use App\Services\Payments\PaymentVerificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PaymentCallbackController extends Controller
 {
@@ -25,6 +26,11 @@ class PaymentCallbackController extends Controller
         $payment = Payment::where('provider', $provider)->where('reference', $reference)->first();
 
         if (! $payment) {
+            Log::warning('Payment callback received for an unknown reference', [
+                'provider' => $provider,
+                'reference' => $reference,
+            ]);
+
             return redirect()->route('orders.index');
         }
 

@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Notifications\OrderStatusUpdated;
 use App\Notifications\SupplierOrderStatusUpdated;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class OrderFulfillmentService
 {
@@ -35,7 +37,17 @@ class OrderFulfillmentService
             ]);
         });
 
-        $order->user->notify(new OrderStatusUpdated($order, (string) $note));
+        // The status change itself already committed above - a mail
+        // failure here must never look like the status update failed too.
+        try {
+            $order->user->notify(new OrderStatusUpdated($order, (string) $note));
+        } catch (Throwable $e) {
+            Log::error('OrderStatusUpdated notification failed to send', [
+                'order_id' => $order->id,
+                'status' => $status,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         $this->notifySuppliers($order, (string) $note);
 
@@ -87,7 +99,15 @@ class OrderFulfillmentService
             ->filter()
             ->unique('id')
             ->each(function ($supplierProfile) use ($order, $note) {
-                $supplierProfile->user?->notify(new SupplierOrderStatusUpdated($order, $note));
+                try {
+                    $supplierProfile->user?->notify(new SupplierOrderStatusUpdated($order, $note));
+                } catch (Throwable $e) {
+                    Log::error('SupplierOrderStatusUpdated notification failed to send', [
+                        'order_id' => $order->id,
+                        'supplier_profile_id' => $supplierProfile->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             });
     }
 }

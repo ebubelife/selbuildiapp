@@ -192,6 +192,23 @@ class PaymentIntegrationTest extends TestCase
         $this->assertSame('pending', $order->fresh()->payment_status);
     }
 
+    public function test_confirm_leaves_the_payment_pending_when_verification_itself_fails(): void
+    {
+        PaymentGateway::create(['provider' => 'paystack', 'display_name' => 'Paystack', 'is_enabled' => true, 'mode' => 'test', 'credentials' => ['secret_key' => 'sk_test_abc']]);
+        [$order, $payment] = $this->makeOrderWithPayment('paystack', 9500);
+
+        // A network/API failure talking to the provider - this is
+        // transient, not a verdict, so it must not mark the payment
+        // failed (which would incorrectly tell the customer their payment
+        // didn't go through when we simply couldn't check yet).
+        Http::fake(['api.paystack.co/*' => fn () => throw new \Illuminate\Http\Client\ConnectionException('Connection timed out')]);
+
+        app(PaymentVerificationService::class)->confirm('paystack', $payment->reference);
+
+        $this->assertSame('pending', $payment->fresh()->status);
+        $this->assertSame('pending', $order->fresh()->payment_status);
+    }
+
     public function test_confirm_is_idempotent_and_does_not_re_verify_an_already_paid_payment(): void
     {
         PaymentGateway::create(['provider' => 'paystack', 'display_name' => 'Paystack', 'is_enabled' => true, 'mode' => 'test', 'credentials' => ['secret_key' => 'sk_test_abc']]);

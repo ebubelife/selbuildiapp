@@ -7,6 +7,7 @@ use App\Models\PaymentGateway;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class FlutterwaveGateway implements PaymentGatewayContract
@@ -38,8 +39,21 @@ class FlutterwaveGateway implements PaymentGatewayContract
         $link = $response->json('data.link');
 
         if (! $response->successful() || ! $link) {
+            Log::error('Flutterwave initialize failed', [
+                'reference' => $payment->reference,
+                'order_id' => $order->id,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
             throw new RuntimeException('Flutterwave did not return a payment link: '.$response->body());
         }
+
+        Log::info('Flutterwave payment initialized', [
+            'reference' => $payment->reference,
+            'order_id' => $order->id,
+            'amount' => $payment->amount,
+        ]);
 
         return $link;
     }

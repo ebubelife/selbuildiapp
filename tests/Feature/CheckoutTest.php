@@ -301,6 +301,47 @@ class CheckoutTest extends TestCase
         $this->assertDatabaseCount('payments', 0);
     }
 
+    public function test_a_failed_payment_initialize_still_leaves_the_order_placed_and_redirects_gracefully(): void
+    {
+        PaymentGateway::create([
+            'provider' => 'paystack',
+            'display_name' => 'Paystack',
+            'is_enabled' => true,
+            'mode' => 'test',
+            'credentials' => ['secret_key' => 'sk_test_abc'],
+        ]);
+
+        [$user] = $this->customerWithCartItem();
+        $address = $user->addresses()->create([
+            'recipient_name' => 'Test Customer',
+            'phone' => '+237600000000',
+            'country' => 'Cameroon',
+            'city' => 'Douala',
+            'street' => '123 Rue de la Paix',
+            'is_default' => true,
+        ]);
+
+        // Simulate Paystack's API being down/erroring.
+        Http::fake(['api.paystack.co/*' => Http::response(['status' => false], 500)]);
+
+        $component = Volt::test('checkout.index')
+            ->set('step', 'confirm')
+            ->set('selectedAddressId', $address->id)
+            ->set('paymentMethod', 'paystack')
+            ->call('placeOrder');
+
+        // The order and payment already saved successfully before the
+        // provider call - a failed redirect must not undo that.
+        $order = \App\Models\Order::sole();
+        $this->assertSame('pending', $order->payment_status);
+
+        $payment = \App\Models\Payment::sole();
+        $this->assertSame('pending', $payment->status);
+
+        $component->assertRedirect(route('orders.show', $order));
+        $this->assertNotNull(session('paymentError'));
+    }
+
     public function test_mobile_money_is_shown_separately_from_card_gateways(): void
     {
         PaymentGateway::create(['provider' => 'fapshi', 'display_name' => 'Fapshi (MTN/Orange Money)', 'is_enabled' => true, 'mode' => 'test', 'credentials' => []]);

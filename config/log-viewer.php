@@ -3,7 +3,6 @@
 use Opcodes\LogViewer\Enums\SortingMethod;
 use Opcodes\LogViewer\Enums\SortingOrder;
 use Opcodes\LogViewer\Enums\Theme;
-use Opcodes\LogViewer\Http\Middleware\AuthorizeLogViewer;
 use Opcodes\LogViewer\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
 return [
@@ -102,9 +101,15 @@ return [
     |
     */
 
+    // 'auth:admin' rather than the package's own Gate-based
+    // AuthorizeLogViewer - this is the same proven pattern already used for
+    // the standalone impersonation route (routes/web.php), checking the
+    // 'admin' guard directly via Laravel's own auth middleware instead of
+    // a custom Gate closure resolved through the package's own auth
+    // callback system.
     'middleware' => [
         'web',
-        AuthorizeLogViewer::class,
+        'auth:admin',
     ],
 
     /*
@@ -118,7 +123,7 @@ return [
 
     'api_middleware' => [
         EnsureFrontendRequestsAreStateful::class,
-        AuthorizeLogViewer::class,
+        'auth:admin',
     ],
 
     'api_stateful_domains' => env('LOG_VIEWER_API_STATEFUL_DOMAINS') ? explode(',', env('LOG_VIEWER_API_STATEFUL_DOMAINS')) : null,
@@ -168,24 +173,17 @@ return [
     |
     */
 
+    // Trimmed to just this app's own Laravel logs - the package's stock
+    // defaults also glob system paths like /var/log/httpd and /var/log/nginx
+    // (plus several macOS dev-machine paths), which don't exist - or PHP
+    // can't read - in this shared-hosting environment. fopen() on whatever
+    // those patterns match then silently returns false, and the package
+    // doesn't null-check before passing that into fgets(), so every file
+    // listing request 500s regardless of the actual Laravel logs being
+    // perfectly fine.
     'include_files' => [
         '*.log',
         '**/*.log',
-
-        // You can include paths to other log types as well, such as apache, nginx, and more.
-        // This key => value pair can be used to rename and group multiple paths into one folder in the UI.
-        '/var/log/httpd/*' => 'Apache',
-        '/var/log/nginx/*' => 'Nginx',
-
-        // MacOS Apple Silicon logs
-        '/opt/homebrew/var/log/nginx/*',
-        '/opt/homebrew/var/log/httpd/*',
-        '/opt/homebrew/var/log/php-fpm.log',
-        '/opt/homebrew/var/log/postgres*log',
-        '/opt/homebrew/var/log/redis*log',
-        '/opt/homebrew/var/log/supervisor*log',
-
-        // '/absolute/paths/supported',
     ],
 
     /*

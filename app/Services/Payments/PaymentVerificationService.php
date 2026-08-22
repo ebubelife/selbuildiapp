@@ -6,6 +6,7 @@ use App\Models\Payment;
 use App\Services\OrderFulfillmentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class PaymentVerificationService
 {
@@ -29,13 +30,50 @@ class PaymentVerificationService
 
         $payment = Payment::where('provider', $provider)->where('reference', $reference)->first();
 
-        if (! $payment || $payment->status === 'paid') {
+        if (! $payment) {
+            Log::warning('Payment verification requested for an unknown reference', [
+                'provider' => $provider,
+                'reference' => $reference,
+            ]);
+
             return;
         }
 
-        $result = $this->gateways->make($provider)->verify($reference);
+        if ($payment->status === 'paid') {
+            return;
+        }
+
+        Log::info('Verifying payment', [
+            'provider' => $provider,
+            'reference' => $reference,
+            'order_id' => $payment->order_id,
+            'expected_amount' => $payment->amount,
+        ]);
+
+        try {
+            $result = $this->gateways->make($provider)->verify($reference);
+        } catch (Throwable $e) {
+            // A network/API failure talking to the provider is transient,
+            // not a verdict - leave the payment as-is (still 'pending')
+            // rather than marking it failed, so a retry (another webhook
+            // delivery, or the customer revisiting) can still succeed once
+            // the provider is reachable again.
+            Log::error('Payment verification request failed', [
+                'provider' => $provider,
+                'reference' => $reference,
+                'order_id' => $payment->order_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return;
+        }
 
         if (! $result->successful) {
+            Log::warning('Payment reported as unsuccessful by provider', [
+                'provider' => $provider,
+                'reference' => $reference,
+                'order_id' => $payment->order_id,
+            ]);
             $payment->update(['status' => 'failed']);
 
             return;
@@ -49,6 +87,7 @@ class PaymentVerificationService
             Log::warning('Payment amount mismatch on verification', [
                 'provider' => $provider,
                 'reference' => $reference,
+                'order_id' => $payment->order_id,
                 'expected' => $payment->amount,
                 'reported' => $result->amount,
             ]);
@@ -67,5 +106,12 @@ class PaymentVerificationService
                 $this->fulfillment->advanceOrderStatus($order, 'confirmed', 'Payment confirmed via '.$payment->provider.'.');
             }
         });
+
+        Log::info('Payment confirmed', [
+            'provider' => $provider,
+            'reference' => $reference,
+            'order_id' => $payment->order_id,
+            'amount' => $payment->amount,
+        ]);
     }
 }
