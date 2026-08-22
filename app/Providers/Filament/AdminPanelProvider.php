@@ -54,7 +54,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->navigationItems([
                 NavigationItem::make('Logs')
-                    ->url(fn () => url(config('log-viewer.route_path')), shouldOpenInNewTab: true)
+                    ->url(fn () => url(config('log-viewer.route_path') ?: 's/admin/build/logs'), shouldOpenInNewTab: true)
                     ->icon(Heroicon::OutlinedDocumentText)
                     ->group('Settings')
                     ->sort(100),
