@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Services\CartService;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -25,6 +27,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Log Viewer authenticates against the 'admin' guard specifically,
+        // not the storefront's 'web' guard its own route middleware starts
+        // a session for - an admin's login has nothing to do with 'web',
+        // and a customer/contractor/supplier session on 'web' should never
+        // satisfy this regardless.
+        Gate::define('viewLogViewer', function () {
+            return Auth::guard('admin')->user()?->isAdmin() ?? false;
+        });
     }
 }
