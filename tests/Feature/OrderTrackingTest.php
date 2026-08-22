@@ -221,4 +221,27 @@ class OrderTrackingTest extends TestCase
             ->assertOk()
             ->assertSee('Your orders, delivery tracking, and Procurement Trust Score will show up here');
     }
+
+    public function test_dashboard_shows_a_shop_materials_section_for_a_customer(): void
+    {
+        $product = $this->createProduct();
+        $user = User::factory()->create(['role' => 'customer']);
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Shop Materials')
+            ->assertSee($product->name)
+            ->assertSee(route('shop.show', $product), escape: false);
+    }
+
+    public function test_dashboard_does_not_show_a_shop_materials_section_for_a_supplier(): void
+    {
+        $user = User::factory()->create(['role' => 'supplier']);
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee('Shop Materials');
+    }
 }

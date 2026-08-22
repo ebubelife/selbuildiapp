@@ -88,6 +88,13 @@ Route::get('dashboard', function () {
                 ->whereIn('fulfillment_status', ['pending', 'confirmed', 'shipped'])
                 ->count()
             : 0,
+        'suggestedProducts' => $user->isSupplier()
+            ? collect()
+            : Product::where('is_active', true)
+                ->with('category')
+                ->inRandomOrder()
+                ->limit(4)
+                ->get(),
     ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 

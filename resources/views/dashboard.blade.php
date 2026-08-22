@@ -213,6 +213,34 @@
                         @endif
                     </div>
                 </div>
+
+                @if ($suggestedProducts->isNotEmpty())
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-navy-100 mt-6">
+                        <div class="p-8">
+                            <div class="flex items-center justify-between flex-wrap gap-3">
+                                <h3 class="font-heading text-lg font-semibold text-navy-900">Shop Materials</h3>
+                                <a href="{{ route('shop.index') }}" wire:navigate class="text-sm font-semibold text-navy-700 hover:text-gold-600 transition-colors flex items-center gap-1">
+                                    Shop all materials
+                                    <x-icon name="arrow-right" class="w-4 h-4" />
+                                </a>
+                            </div>
+
+                            <div class="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                @foreach ($suggestedProducts as $product)
+                                    <a href="{{ route('shop.show', $product) }}" wire:navigate class="group block rounded-xl border border-navy-100 overflow-hidden hover:border-gold-300 hover:shadow-brand transition-all duration-200">
+                                        <div class="aspect-square bg-navy-50 flex items-center justify-center">
+                                            <x-icon :name="$product->category->icon ?? 'cart'" class="w-10 h-10 text-navy-300 group-hover:text-gold-500 transition-colors duration-200" stroke-width="1.2" />
+                                        </div>
+                                        <div class="p-3">
+                                            <p class="font-semibold text-navy-900 text-xs truncate">{{ $product->name }}</p>
+                                            <p class="mt-1 font-heading font-bold text-navy-900 text-sm">{{ number_format($product->price) }} <span class="text-xs font-normal text-navy-400">XAF</span></p>
+                                        </div>
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                @endif
             @endif
         </div>
     </div>
