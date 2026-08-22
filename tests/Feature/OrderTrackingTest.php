@@ -9,6 +9,7 @@ use App\Models\SupplierProfile;
 use App\Models\User;
 use App\Notifications\OrderPlaced;
 use App\Notifications\OrderStatusUpdated;
+use App\Notifications\SupplierOrderStatusUpdated;
 use App\Services\CartService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -108,6 +109,43 @@ class OrderTrackingTest extends TestCase
         ]);
 
         Notification::assertSentTo($user, OrderStatusUpdated::class, function (OrderStatusUpdated $notification) use ($order) {
+            return $notification->order->id === $order->id;
+        });
+    }
+
+    public function test_order_status_change_also_notifies_the_fulfilling_supplier(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create(['role' => 'customer']);
+
+        $this->actingAs($user);
+        $product = $this->createProduct();
+        app(CartService::class)->add($product, 2);
+
+        $address = $user->addresses()->create([
+            'recipient_name' => 'Test Customer',
+            'phone' => '+237600000000',
+            'country' => 'Cameroon',
+            'city' => 'Douala',
+            'street' => '123 Rue de la Paix',
+            'is_default' => true,
+        ]);
+
+        Volt::test('checkout.index')
+            ->set('step', 'confirm')
+            ->set('selectedAddressId', $address->id)
+            ->call('placeOrder');
+
+        $order = Order::sole();
+        $supplierUser = $product->supplierProfile->user;
+
+        Artisan::call('orders:update-status', [
+            'order' => $order->order_number,
+            'status' => 'confirmed',
+        ]);
+
+        Notification::assertSentTo($supplierUser, SupplierOrderStatusUpdated::class, function (SupplierOrderStatusUpdated $notification) use ($order) {
             return $notification->order->id === $order->id;
         });
     }

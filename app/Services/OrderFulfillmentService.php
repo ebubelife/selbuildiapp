@@ -7,6 +7,7 @@ use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
 use App\Models\User;
 use App\Notifications\OrderStatusUpdated;
+use App\Notifications\SupplierOrderStatusUpdated;
 use Illuminate\Support\Facades\DB;
 
 class OrderFulfillmentService
@@ -35,6 +36,8 @@ class OrderFulfillmentService
         });
 
         $order->user->notify(new OrderStatusUpdated($order, (string) $note));
+
+        $this->notifySuppliers($order, (string) $note);
 
         if ($status === 'delivered') {
             $this->trustScoreService->recordEvent($order->user, 'order_completed', $order);
@@ -67,5 +70,24 @@ class OrderFulfillmentService
         }
 
         return $item->fresh();
+    }
+
+    /**
+     * Every supplier who has at least one item on this order gets notified
+     * too, not just the buyer - they need to know when to start
+     * fulfilling (confirmed) or stop (cancelled), independent of whichever
+     * per-item fulfillment status they've set themselves.
+     */
+    private function notifySuppliers(Order $order, string $note): void
+    {
+        $order->load('items.supplierProfile.user');
+
+        $order->items
+            ->pluck('supplierProfile')
+            ->filter()
+            ->unique('id')
+            ->each(function ($supplierProfile) use ($order, $note) {
+                $supplierProfile->user?->notify(new SupplierOrderStatusUpdated($order, $note));
+            });
     }
 }

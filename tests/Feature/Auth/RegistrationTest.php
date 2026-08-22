@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Notifications\WelcomeEmail;
 use Database\Seeders\CountrySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Volt;
 use Tests\TestCase;
@@ -58,6 +60,27 @@ class RegistrationTest extends TestCase
         $this->assertSame('diaspora_buyer', $user->account_type);
         $this->assertSame('EUR', $user->preferred_currency);
         $this->assertSame('Cameroon', $user->project_country);
+    }
+
+    public function test_registering_sends_a_welcome_email(): void
+    {
+        Notification::fake();
+
+        Volt::test('pages.auth.register')
+            ->set('first_name', 'Test')
+            ->set('last_name', 'User')
+            ->set('email', 'test@example.com')
+            ->set('phone', '+237600000000')
+            ->set('country', 'France')
+            ->set('city', 'Paris')
+            ->set('project_country', 'Cameroon')
+            ->set('account_type', 'diaspora_buyer')
+            ->set('preferred_currency', 'EUR')
+            ->set('password', 'password')
+            ->set('password_confirmation', 'password')
+            ->call('register');
+
+        Notification::assertSentTo(auth()->user(), WelcomeEmail::class);
     }
 
     public function test_customer_registration_requires_core_fields(): void

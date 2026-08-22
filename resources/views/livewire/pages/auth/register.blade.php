@@ -2,6 +2,7 @@
 
 use App\Models\Country;
 use App\Models\User;
+use App\Notifications\WelcomeEmail;
 use App\Services\CartService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
@@ -145,6 +146,8 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
         }
 
         event(new Registered($user));
+
+        $user->notify(new WelcomeEmail());
 
         Auth::login($user);
 
