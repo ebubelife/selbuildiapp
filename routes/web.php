@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\DeployController;
 use App\Http\Controllers\ImpersonationController;
+use App\Http\Controllers\PaymentCallbackController;
+use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\SitemapController;
 use App\Models\Category;
 use App\Models\Product;
@@ -9,6 +11,21 @@ use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 Route::post('deploy-hook', [DeployController::class, 'run'])->name('deploy-hook');
+
+// The provider segment is constrained to the three known drivers so a
+// garbage value 404s at the routing layer instead of reaching
+// PaymentGatewayManager::make() and throwing.
+Route::middleware('auth')
+    ->get('payments/{provider}/callback', PaymentCallbackController::class)
+    ->whereIn('provider', ['flutterwave', 'paystack', 'fapshi'])
+    ->name('payments.callback');
+
+// Unauthenticated (the provider's own servers call this, not a logged-in
+// browser) and CSRF-exempt (see bootstrap/app.php) - signature
+// verification inside the controller is what actually authenticates it.
+Route::post('payments/{provider}/webhook', PaymentWebhookController::class)
+    ->whereIn('provider', ['flutterwave', 'paystack', 'fapshi'])
+    ->name('payments.webhook');
 
 Route::get('impersonate/{user}', [ImpersonationController::class, 'start'])
     ->middleware('auth:admin')

@@ -4,11 +4,15 @@ use App\Models\Address;
 use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
+use App\Models\Payment;
+use App\Models\PaymentGateway;
 use App\Notifications\OrderPlaced;
 use App\Services\CartService;
 use App\Services\CreditService;
+use App\Services\Payments\PaymentGatewayManager;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -86,7 +90,7 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
         $this->country = 'Cameroon';
     }
 
-    public function placeOrder(CreditService $creditService): void
+    public function placeOrder(CreditService $creditService, PaymentGatewayManager $gateways): void
     {
         $this->validate([
             'selectedAddressId' => ['required', 'exists:addresses,id'],
@@ -107,7 +111,20 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
             && $creditAccount?->isApproved()
             && $creditAccount->available_credit >= $subtotal;
 
-        $order = DB::transaction(function () use ($cart, $subtotal, $useCredit) {
+        // Trust the submitted payment method only if it's still actually
+        // enabled right now - the option list a customer saw when the page
+        // loaded could be stale (an admin toggled a gateway off since).
+        $onlineProvider = ! $useCredit && $gateways->isEnabled($this->paymentMethod)
+            ? $this->paymentMethod
+            : null;
+
+        $paymentMethod = match (true) {
+            $useCredit => 'selbuildi_credit',
+            (bool) $onlineProvider => $onlineProvider,
+            default => 'cash_on_delivery',
+        };
+
+        [$order, $payment] = DB::transaction(function () use ($cart, $subtotal, $paymentMethod, $onlineProvider) {
             $order = Order::create([
                 'order_number' => Order::generateOrderNumber(),
                 'user_id' => Auth::id(),
@@ -119,7 +136,7 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                 'total' => $subtotal,
                 'currency' => 'XAF',
                 'payment_status' => 'pending',
-                'payment_method' => $useCredit ? 'selbuildi_credit' : 'cash_on_delivery',
+                'payment_method' => $paymentMethod,
                 'shipping_address_id' => $this->selectedAddressId,
                 'project_id' => $this->selectedProjectId,
                 'placed_at' => now(),
@@ -154,7 +171,16 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
 
             $cart->items()->delete();
 
-            return $order;
+            $payment = $onlineProvider ? Payment::create([
+                'order_id' => $order->id,
+                'provider' => $onlineProvider,
+                'amount' => $order->total,
+                'currency' => $order->currency,
+                'status' => 'pending',
+                'reference' => 'SB-'.strtoupper(Str::random(12)),
+            ]) : null;
+
+            return [$order, $payment];
         });
 
         if ($useCredit) {
@@ -162,6 +188,17 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
         }
 
         Auth::user()->notify(new OrderPlaced($order));
+
+        if ($payment) {
+            $checkoutUrl = $gateways->make($onlineProvider)->initialize(
+                $payment,
+                route('payments.callback', ['provider' => $onlineProvider, 'reference' => $payment->reference])
+            );
+
+            $this->redirect($checkoutUrl);
+
+            return;
+        }
 
         $this->redirect(route('orders.show', $order), navigate: true);
     }
@@ -179,6 +216,17 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
             'projects' => Auth::user()->isContractor() ? Auth::user()->projects()->where('status', 'active')->get() : collect(),
             'creditAccount' => $creditAccount,
             'creditUsableForOrder' => $creditAccount?->isApproved() && $creditAccount->available_credit >= $cart->subtotal(),
+            // Split rather than one flat list - mobile money (Fapshi) is a
+            // fundamentally different customer flow (a USSD prompt on their
+            // own phone) from card/hosted-page gateways, and the checkout
+            // UI should say so rather than presenting all three as
+            // interchangeable "redirect to pay" buttons.
+            'cardGateways' => PaymentGateway::where('is_enabled', true)
+                ->whereIn('provider', ['flutterwave', 'paystack'])
+                ->get(),
+            'mobileMoneyGateway' => PaymentGateway::where('is_enabled', true)
+                ->where('provider', 'fapshi')
+                ->first(),
         ];
     }
 }; ?>
@@ -410,6 +458,47 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                                             <span>
                                                 <span class="font-semibold text-navy-900 text-sm block">Pay with Selbuildi Credit</span>
                                                 <span class="text-xs text-navy-400">{{ number_format($creditAccount->available_credit) }} XAF available. Repay by the due date shown on your order.</span>
+                                            </span>
+                                        </button>
+                                    @endif
+
+                                    @foreach ($cardGateways as $gateway)
+                                        <button
+                                            type="button"
+                                            role="radio"
+                                            aria-checked="{{ $paymentMethod === $gateway->provider ? 'true' : 'false' }}"
+                                            wire:click="$set('paymentMethod', '{{ $gateway->provider }}')"
+                                            @class([
+                                                'w-full text-left p-4 rounded-xl border-2 transition-colors duration-150 flex items-start gap-3',
+                                                'border-gold-500 bg-gold-50' => $paymentMethod === $gateway->provider,
+                                                'border-navy-100 hover:border-navy-300' => $paymentMethod !== $gateway->provider,
+                                            ])
+                                        >
+                                            <x-icon name="wallet" class="w-4 h-4 mt-0.5 shrink-0" />
+                                            <span>
+                                                <span class="font-semibold text-navy-900 text-sm block">Pay with {{ $gateway->display_name }}</span>
+                                                <span class="text-xs text-navy-400">You'll be redirected to a secure page to pay by card.</span>
+                                            </span>
+                                        </button>
+                                    @endforeach
+
+                                    @if ($mobileMoneyGateway)
+                                        <p class="!mt-4 text-xs font-semibold text-navy-500 uppercase tracking-wide pb-1">Or pay with Mobile Money</p>
+                                        <button
+                                            type="button"
+                                            role="radio"
+                                            aria-checked="{{ $paymentMethod === $mobileMoneyGateway->provider ? 'true' : 'false' }}"
+                                            wire:click="$set('paymentMethod', '{{ $mobileMoneyGateway->provider }}')"
+                                            @class([
+                                                'w-full text-left p-4 rounded-xl border-2 transition-colors duration-150 flex items-start gap-3',
+                                                'border-gold-500 bg-gold-50' => $paymentMethod === $mobileMoneyGateway->provider,
+                                                'border-navy-100 hover:border-navy-300' => $paymentMethod !== $mobileMoneyGateway->provider,
+                                            ])
+                                        >
+                                            <x-icon name="phone" class="w-4 h-4 mt-0.5 shrink-0" />
+                                            <span>
+                                                <span class="font-semibold text-navy-900 text-sm block">MTN Mobile Money / Orange Money</span>
+                                                <span class="text-xs text-navy-400">Confirm the payment with a prompt sent straight to your phone.</span>
                                             </span>
                                         </button>
                                     @endif

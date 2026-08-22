@@ -21,6 +21,7 @@
         'map-pin' => '<path d="M12 21s7-6.5 7-11a7 7 0 1 0-14 0c0 4.5 7 11 7 11Z" /><circle cx="12" cy="10" r="2.4" />',
         'clock' => '<circle cx="12" cy="12" r="9" /><path d="M12 7.5v5l3 2.5" />',
         'cart' => '<circle cx="9" cy="20" r="1.3" /><circle cx="18" cy="20" r="1.3" /><path d="M3 4h2l2.4 11.4a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.6L21 8H6.2" />',
+        'phone' => '<rect x="6.5" y="2.5" width="11" height="19" rx="2" /><line x1="6.5" y1="17.5" x2="17.5" y2="17.5" /><line x1="11" y1="20" x2="13" y2="20" />',
     ];
 
     $inner = $paths[$name] ?? '';

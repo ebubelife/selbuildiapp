@@ -15,6 +15,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->validateCsrfTokens(except: [
             'deploy-hook',
+            'payments/*/webhook',
         ]);
 
         $middleware->web(append: [

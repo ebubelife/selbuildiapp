@@ -3,11 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
+use App\Models\PaymentGateway;
 use App\Models\Product;
 use App\Models\SupplierProfile;
 use App\Models\User;
 use App\Services\CartService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Livewire\Volt\Volt;
 use Tests\TestCase;
 
@@ -230,5 +232,86 @@ class CheckoutTest extends TestCase
 
         Volt::test('orders.show', ['order' => $order])
             ->assertStatus(403);
+    }
+
+    public function test_choosing_an_enabled_online_gateway_creates_a_pending_payment_and_redirects_to_hosted_checkout(): void
+    {
+        PaymentGateway::create([
+            'provider' => 'paystack',
+            'display_name' => 'Paystack',
+            'is_enabled' => true,
+            'mode' => 'test',
+            'credentials' => ['secret_key' => 'sk_test_abc'],
+        ]);
+
+        [$user, $product] = $this->customerWithCartItem(2);
+        $address = $user->addresses()->create([
+            'recipient_name' => 'Test Customer',
+            'phone' => '+237600000000',
+            'country' => 'Cameroon',
+            'city' => 'Douala',
+            'street' => '123 Rue de la Paix',
+            'is_default' => true,
+        ]);
+
+        Http::fake(['api.paystack.co/*' => Http::response([
+            'status' => true,
+            'data' => ['authorization_url' => 'https://checkout.paystack.com/xyz'],
+        ])]);
+
+        $component = Volt::test('checkout.index')
+            ->set('step', 'confirm')
+            ->set('selectedAddressId', $address->id)
+            ->set('paymentMethod', 'paystack')
+            ->call('placeOrder');
+
+        $order = \App\Models\Order::sole();
+        $this->assertSame('paystack', $order->payment_method);
+
+        $payment = \App\Models\Payment::sole();
+        $this->assertSame('paystack', $payment->provider);
+        $this->assertSame('pending', $payment->status);
+        $this->assertSame(2 * $product->price, $payment->amount);
+
+        $component->assertRedirect('https://checkout.paystack.com/xyz');
+    }
+
+    public function test_a_disabled_gateway_cannot_be_used_even_if_submitted_directly(): void
+    {
+        [$user] = $this->customerWithCartItem();
+        $address = $user->addresses()->create([
+            'recipient_name' => 'Test Customer',
+            'phone' => '+237600000000',
+            'country' => 'Cameroon',
+            'city' => 'Douala',
+            'street' => '123 Rue de la Paix',
+            'is_default' => true,
+        ]);
+
+        // No PaymentGateway rows seeded/enabled - simulates a stale UI
+        // state or a directly-manipulated Livewire payload.
+        Volt::test('checkout.index')
+            ->set('step', 'confirm')
+            ->set('selectedAddressId', $address->id)
+            ->set('paymentMethod', 'paystack')
+            ->call('placeOrder');
+
+        $order = \App\Models\Order::sole();
+        $this->assertSame('cash_on_delivery', $order->payment_method);
+        $this->assertDatabaseCount('payments', 0);
+    }
+
+    public function test_mobile_money_is_shown_separately_from_card_gateways(): void
+    {
+        PaymentGateway::create(['provider' => 'fapshi', 'display_name' => 'Fapshi (MTN/Orange Money)', 'is_enabled' => true, 'mode' => 'test', 'credentials' => []]);
+        PaymentGateway::create(['provider' => 'paystack', 'display_name' => 'Paystack', 'is_enabled' => true, 'mode' => 'test', 'credentials' => []]);
+
+        $this->customerWithCartItem();
+
+        Volt::test('checkout.index')
+            ->set('step', 'confirm')
+            ->assertSee('Or pay with Mobile Money')
+            ->assertSee('MTN Mobile Money / Orange Money')
+            ->assertSee('Pay with Paystack');
     }
 }
