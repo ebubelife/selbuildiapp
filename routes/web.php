@@ -7,10 +7,29 @@ use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\SitemapController;
 use App\Models\Category;
 use App\Models\Product;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 Route::post('deploy-hook', [DeployController::class, 'run'])->name('deploy-hook');
+
+// Diagnostic only - confirms the mail transport is actually configured and
+// reachable (SMTP host/port/credentials), independent of any notification
+// class. Admin-gated so it can't be triggered or scraped for error detail
+// by an anonymous visitor.
+Route::get('test-email', function () {
+    try {
+        Mail::raw('This is a test email from Selbuildi, confirming the mail transport is working.', function ($message) {
+            $message->to('ebubeemeka19@gmail.com')->subject('Selbuildi - Test Email');
+        });
+
+        return response("Sent successfully to ebubeemeka19@gmail.com.\n\nMailer: ".config('mail.default')."\nHost: ".config('mail.mailers.smtp.host'))
+            ->header('Content-Type', 'text/plain');
+    } catch (\Throwable $e) {
+        return response("Failed to send.\n\nMailer: ".config('mail.default')."\nHost: ".config('mail.mailers.smtp.host')."\n\nError: {$e->getMessage()}\n\n{$e->getTraceAsString()}", 500)
+            ->header('Content-Type', 'text/plain');
+    }
+})->middleware('auth:admin')->name('test-email');
 
 // The provider segment is constrained to the three known drivers so a
 // garbage value 404s at the routing layer instead of reaching
