@@ -14,7 +14,7 @@
                 <div class="animate-fade-in-up">
                     <span class="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-1.5 text-sm font-medium text-gold-300">
                         <span class="w-1.5 h-1.5 rounded-full bg-gold-500"></span>
-                        Now serving Cameroon
+                        Now serving Cameroon &amp; Building for Africa
                     </span>
 
                     <h1 class="mt-6 font-heading text-4xl sm:text-5xl xl:text-6xl font-bold text-white leading-[1.1]">
@@ -22,7 +22,7 @@
                     </h1>
 
                     <p class="mt-6 text-lg text-navy-200 leading-relaxed max-w-xl">
-                        Buy building materials from verified suppliers, ship them straight to your site, and track every delivery in real time — whether you're building down the road or from abroad.
+                        Selbuildi connects builders, contractors, developers and diaspora families with trusted suppliers through one platform for purchasing, delivery and financial trust. Buy building materials, track your orders and build a purchasing history that can unlock future credit opportunities.
                     </p>
 
                     <div class="mt-10 flex flex-col sm:flex-row gap-4">
@@ -32,9 +32,9 @@
                                 <x-icon name="arrow-right" class="w-4 h-4" />
                             </x-primary-button>
                         </a>
-                        <a href="#trust-credit">
+                        <a href="#how-it-works">
                             <button type="button" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg font-heading font-semibold text-base text-white border-2 border-white/30 hover:bg-white/10 transition-colors duration-150">
-                                Learn about Credit
+                                See How It Works
                             </button>
                         </a>
                     </div>
@@ -89,13 +89,50 @@
         </div>
     </section>
 
-    {{-- Trust bar --}}
+    {{-- Capabilities bar --}}
     <section class="bg-navy-800 py-14">
         <div class="max-w-7xl mx-auto px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 gap-8">
-            <x-stat-counter :target="2400" suffix="+" label="Orders Fulfilled" />
-            <x-stat-counter :target="85" suffix="+" label="Verified Suppliers" />
-            <x-stat-counter :target="12" label="Cities Covered" />
-            <x-stat-counter :target="98" suffix="%" label="On-time Delivery" />
+            @foreach ([
+                ['icon' => 'shield', 'title' => 'Verified Suppliers', 'text' => 'Every supplier vetted before they can sell on Selbuildi.'],
+                ['icon' => 'truck', 'title' => 'Live Order Tracking', 'text' => 'Follow every purchase from order to delivery, in real time.'],
+                ['icon' => 'star', 'title' => 'Procurement Trust Score', 'text' => 'A purchase history that can unlock better credit terms.'],
+                ['icon' => 'wallet', 'title' => 'Flexible Credit Terms', 'text' => 'From deposit-and-balance to Net-30, as your trust grows.'],
+            ] as $capability)
+                <div class="text-center">
+                    <span class="inline-flex items-center justify-center w-11 h-11 rounded-full bg-white/10 text-gold-500">
+                        <x-icon :name="$capability['icon']" class="w-5 h-5" />
+                    </span>
+                    <div class="mt-3 font-heading font-semibold text-white text-sm">{{ $capability['title'] }}</div>
+                    <p class="mt-1.5 text-xs text-navy-200 leading-relaxed">{{ $capability['text'] }}</p>
+                </div>
+            @endforeach
+        </div>
+    </section>
+
+    {{-- Four Connected Infrastructures --}}
+    <section class="py-24 bg-neutral-50">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <x-reveal class="text-center max-w-2xl mx-auto">
+                <span class="text-sm font-semibold text-gold-800 uppercase tracking-wide">One Platform. Four Connected Infrastructures.</span>
+                <h2 class="mt-3 font-heading text-3xl sm:text-4xl font-bold text-navy-900">Selbuildi brings Commerce, Logistics, Finance and Trust together to create a better way to build.</h2>
+            </x-reveal>
+
+            <div class="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                @foreach ([
+                    ['icon' => 'cart', 'title' => 'Commerce', 'text' => 'Buy quality building materials from trusted suppliers and make payments from wherever you are.'],
+                    ['icon' => 'truck', 'title' => 'Logistics', 'text' => 'Track your purchases and deliveries so you know what is happening from order to site.'],
+                    ['icon' => 'wallet', 'title' => 'Finance', 'text' => 'Your purchasing activity creates a record that contributes to your Procurement Trust Score and can support future access to credit.'],
+                    ['icon' => 'shield', 'title' => 'Trust', 'text' => 'Your purchasing history and activity build a record of trust and credibility within the Selbuildi platform.'],
+                ] as $i => $pillar)
+                    <x-reveal :delay="$i * 100" class="bg-white rounded-2xl border border-navy-100 p-6 hover:shadow-brand hover:-translate-y-1 transition-all duration-300">
+                        <span class="flex items-center justify-center w-12 h-12 rounded-xl bg-navy-50 text-navy-700">
+                            <x-icon :name="$pillar['icon']" class="w-6 h-6" />
+                        </span>
+                        <h3 class="mt-5 font-heading font-semibold text-navy-900">{{ $pillar['title'] }}</h3>
+                        <p class="mt-2 text-sm text-navy-500 leading-relaxed">{{ $pillar['text'] }}</p>
+                    </x-reveal>
+                @endforeach
+            </div>
         </div>
     </section>
 
@@ -175,7 +212,7 @@
                     ['icon' => 'cart', 'title' => 'Browse & Order', 'text' => 'Compare prices across verified suppliers and order in a few taps.'],
                     ['icon' => 'shield', 'title' => 'Verified & Packed', 'text' => 'Your supplier confirms and prepares your materials for dispatch.'],
                     ['icon' => 'truck', 'title' => 'Track Delivery', 'text' => 'Follow your order in real time, from warehouse to your site.'],
-                    ['icon' => 'check', 'title' => 'Build with Confidence', 'text' => 'Materials arrive as ordered — every step recorded and visible.'],
+                    ['icon' => 'check', 'title' => 'Build Your Record', 'text' => 'Every completed purchase adds to your purchasing history and contributes to your Procurement Trust Score.'],
                 ] as $i => $step)
                     <x-reveal :delay="$i * 120" class="relative text-center">
                         <div class="relative z-10 mx-auto flex items-center justify-center w-14 h-14 rounded-full bg-navy-700 text-white shadow-brand">
@@ -196,7 +233,10 @@
                 <span class="text-sm font-semibold text-gold-800 uppercase tracking-wide">For the Diaspora</span>
                 <h2 class="mt-3 font-heading text-3xl sm:text-4xl font-bold text-navy-900">Building from abroad? See every step.</h2>
                 <p class="mt-4 text-navy-500 leading-relaxed">
-                    Stop sending money home and hoping it's spent right. Order materials directly, pay securely from wherever you are, and watch your project's delivery progress in real time — no middlemen, no guesswork.
+                    Building back home should not mean sending money and hoping for the best. Selbuildi gives you a clearer way to purchase materials, monitor your orders and track deliveries from wherever you are.
+                </p>
+                <p class="mt-3 font-heading font-semibold text-navy-800">
+                    Buy from abroad. Track from abroad. Build with confidence back home.
                 </p>
                 <ul class="mt-6 space-y-3">
                     @foreach (['Pay in your currency, deliver in Cameroon', 'Live delivery tracking for every order', 'Share project access with family on the ground'] as $point)
@@ -271,9 +311,15 @@
 
             <x-reveal :delay="120" class="order-1 lg:order-2">
                 <span class="text-sm font-semibold text-gold-500 uppercase tracking-wide">Procurement Trust Score</span>
-                <h2 class="mt-3 font-heading text-3xl sm:text-4xl font-bold text-white">Your purchase history becomes your credit line</h2>
+                <h2 class="mt-3 font-heading text-3xl sm:text-4xl font-bold text-white">Trust You Can Build</h2>
                 <p class="mt-4 text-navy-200 leading-relaxed">
-                    Every order you complete builds your Procurement Trust Score. As it grows, you unlock better payment terms — from deposit-and-balance plans to full Net-30 credit on your materials.
+                    Every purchase builds more than a transaction history. It builds your record with Selbuildi.
+                </p>
+                <p class="mt-4 text-navy-200 leading-relaxed">
+                    The more consistently and responsibly you use the platform, the stronger your purchasing history becomes. Over time, that history contributes to your Procurement Trust Score and can help create access to better purchasing terms and credit opportunities.
+                </p>
+                <p class="mt-4 text-navy-200 leading-relaxed">
+                    A contractor with a strong record, a developer with a history of successful projects, or a family consistently investing in their home should be able to build a record of trust that creates new opportunities.
                 </p>
                 <div class="mt-8 grid grid-cols-2 gap-4">
                     @foreach ([
@@ -292,65 +338,50 @@
         </div>
     </section>
 
-    {{-- Testimonials --}}
+    {{-- What to Expect --}}
     <section class="py-24 bg-white">
         <div class="max-w-4xl mx-auto px-6 lg:px-8 text-center">
-            <span class="text-sm font-semibold text-gold-800 uppercase tracking-wide">Testimonials</span>
-            <h2 class="mt-3 font-heading text-3xl sm:text-4xl font-bold text-navy-900">Trusted by builders and their families</h2>
+            <span class="text-sm font-semibold text-gold-800 uppercase tracking-wide">What You Can Expect</span>
+            <h2 class="mt-3 font-heading text-3xl sm:text-4xl font-bold text-navy-900">Built so every party can trust the process</h2>
+        </div>
 
-            <div
-                x-data="{
-                    active: 0,
-                    items: [
-                        { quote: 'I ordered every bag of cement for my house from London. My brother in Douala just had to sign for delivery.', name: 'Achille N.', role: 'Diaspora customer, UK' },
-                        { quote: 'The trust score got my company Net-15 terms after our third order. That changed our cash flow completely.', name: 'Fatimatou B.', role: 'Contractor, Yaoundé' },
-                        { quote: 'As a supplier, Selbuildi brought us consistent verified buyers without chasing payments.', name: 'Roger E.', role: 'Supplier partner' },
-                    ]
-                }"
-                x-init="setInterval(() => active = (active + 1) % items.length, 6000)"
-                class="mt-12 relative"
-            >
-                <template x-for="(item, index) in items" :key="index">
-                    <div
-                        x-show="active === index"
-                        x-transition:enter="transition ease-out duration-500"
-                        x-transition:enter-start="opacity-0 translate-y-3"
-                        x-transition:enter-end="opacity-100 translate-y-0"
-                    >
-                        <p class="font-heading text-xl sm:text-2xl text-navy-800 leading-relaxed" x-text="'“' + item.quote + '”'"></p>
-                        <div class="mt-6">
-                            <div class="font-semibold text-navy-900" x-text="item.name"></div>
-                            <div class="text-sm text-navy-400" x-text="item.role"></div>
-                        </div>
-                    </div>
-                </template>
-
-                <div class="mt-8 flex items-center justify-center gap-2">
-                    <template x-for="(item, index) in items" :key="index">
-                        <button
-                            @click="active = index"
-                            :class="active === index ? 'bg-gold-500 w-6' : 'bg-navy-200 w-2'"
-                            class="h-2 rounded-full transition-all duration-300"
-                        ></button>
-                    </template>
-                </div>
-            </div>
+        <div class="mt-14 max-w-6xl mx-auto px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+            @foreach ([
+                ['icon' => 'shield', 'title' => 'Verified suppliers, every time', 'text' => 'Every supplier on Selbuildi is vetted before they can list — so you always know who you\'re buying from.'],
+                ['icon' => 'truck', 'title' => 'See every step', 'text' => 'From confirmation to delivery, track your order in real time — wherever you are in the world.'],
+                ['icon' => 'star', 'title' => 'Build toward credit', 'text' => 'Every completed purchase strengthens your Procurement Trust Score, unlocking better terms over time.'],
+            ] as $i => $point)
+                <x-reveal :delay="$i * 100" class="rounded-2xl border border-navy-100 p-8 text-center">
+                    <span class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-navy-50 text-navy-700">
+                        <x-icon :name="$point['icon']" class="w-6 h-6" />
+                    </span>
+                    <h3 class="mt-5 font-heading font-semibold text-navy-900">{{ $point['title'] }}</h3>
+                    <p class="mt-2 text-sm text-navy-500 leading-relaxed">{{ $point['text'] }}</p>
+                </x-reveal>
+            @endforeach
         </div>
     </section>
 
-    {{-- Supplier CTA --}}
+    {{-- Ecosystem CTA --}}
     <section id="suppliers" class="py-20 bg-gold-500">
-        <div class="max-w-5xl mx-auto px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-8">
-            <div class="text-center sm:text-left">
-                <h2 class="font-heading text-2xl sm:text-3xl font-bold text-navy-900">Are you a supplier?</h2>
-                <p class="mt-2 text-navy-800/80">Join Selbuildi and reach verified buyers across Cameroon and the diaspora.</p>
+        <div class="max-w-5xl mx-auto px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-8">
+            <div class="text-center lg:text-left">
+                <h2 class="font-heading text-2xl sm:text-3xl font-bold text-navy-900">Built for the Construction Ecosystem</h2>
+                <p class="mt-2 text-navy-800/80 max-w-2xl">Selbuildi brings together the people and businesses shaping Africa's built environment — connecting suppliers, contractors, developers, artisans, architects, engineers and customers at home and in the diaspora through one trusted ecosystem.</p>
             </div>
-            <a href="{{ route('register') }}" wire:navigate class="shrink-0">
-                <button type="button" class="inline-flex items-center gap-2 px-8 py-3.5 rounded-lg font-heading font-semibold bg-navy-900 text-white hover:bg-navy-800 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-150">
-                    Join as a Supplier
-                    <x-icon name="arrow-right" class="w-4 h-4" />
-                </button>
-            </a>
+            <div class="flex flex-col sm:flex-row gap-3 shrink-0">
+                <a href="{{ route('register') }}" wire:navigate>
+                    <button type="button" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg font-heading font-semibold bg-navy-900 text-white hover:bg-navy-800 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-150">
+                        Join as a Supplier
+                        <x-icon name="arrow-right" class="w-4 h-4" />
+                    </button>
+                </a>
+                <a href="{{ route('register') }}" wire:navigate>
+                    <button type="button" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg font-heading font-semibold border-2 border-navy-900 text-navy-900 hover:bg-navy-900/10 transition-all duration-150">
+                        Partner With Us
+                    </button>
+                </a>
+            </div>
         </div>
     </section>
 

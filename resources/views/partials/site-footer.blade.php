@@ -4,7 +4,7 @@
             <div class="md:col-span-1">
                 <x-application-logo variant="full" dark class="h-10 w-auto" />
                 <p class="mt-4 text-sm leading-relaxed text-navy-300">
-                    Building the infrastructure of trust — commerce, logistics, and finance for construction across Cameroon.
+                    Building the infrastructure of trust for construction, connecting commerce, logistics and finance across Cameroon and Africa.
                 </p>
             </div>
 

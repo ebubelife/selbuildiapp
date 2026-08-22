@@ -10,7 +10,6 @@ class Logout
 
 
 
-
     /**
      * Log the current user out of the application.
      */
