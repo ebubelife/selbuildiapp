@@ -190,6 +190,31 @@ class PaymentIntegrationTest extends TestCase
 
         $this->assertSame('failed', $payment->fresh()->status);
         $this->assertSame('pending', $order->fresh()->payment_status);
+        $this->assertDatabaseHas('trust_score_events', [
+            'user_id' => $order->user_id,
+            'event_type' => 'payment_failed',
+            'related_order_id' => $order->id,
+        ]);
+    }
+
+    public function test_confirm_records_a_payment_failed_trust_score_event_when_the_provider_reports_failure(): void
+    {
+        PaymentGateway::create(['provider' => 'paystack', 'display_name' => 'Paystack', 'is_enabled' => true, 'mode' => 'test', 'credentials' => ['secret_key' => 'sk_test_abc']]);
+        [$order, $payment] = $this->makeOrderWithPayment('paystack', 9500);
+
+        Http::fake(['api.paystack.co/*' => Http::response([
+            'status' => true,
+            'data' => ['status' => 'failed', 'amount' => 950000, 'currency' => 'XAF'],
+        ])]);
+
+        app(PaymentVerificationService::class)->confirm('paystack', $payment->reference);
+
+        $this->assertSame('failed', $payment->fresh()->status);
+        $this->assertDatabaseHas('trust_score_events', [
+            'user_id' => $order->user_id,
+            'event_type' => 'payment_failed',
+            'related_order_id' => $order->id,
+        ]);
     }
 
     public function test_confirm_leaves_the_payment_pending_when_verification_itself_fails(): void

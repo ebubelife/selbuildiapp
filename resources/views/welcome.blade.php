@@ -121,8 +121,8 @@
                 @foreach ([
                     ['icon' => 'cart', 'title' => 'Commerce', 'text' => 'Buy quality building materials from trusted suppliers and make payments from wherever you are.'],
                     ['icon' => 'truck', 'title' => 'Logistics', 'text' => 'Track your purchases and deliveries so you know what is happening from order to site.'],
-                    ['icon' => 'wallet', 'title' => 'Finance', 'text' => 'Your purchasing activity creates a record that contributes to your Procurement Trust Score and can support future access to credit.'],
-                    ['icon' => 'shield', 'title' => 'Trust', 'text' => 'Your purchasing history and activity build a record of trust and credibility within the Selbuildi platform.'],
+                    ['icon' => 'wallet', 'title' => 'Finance', 'text' => 'Your procurement and transaction history creates a financial record that can form the foundation for future financial opportunities.'],
+                    ['icon' => 'shield', 'title' => 'Trust', 'text' => 'Your activity and performance on Selbuildi build a record of reliability and credibility through your Procurement Trust Score.'],
                 ] as $i => $pillar)
                     <x-reveal :delay="$i * 100" class="bg-white rounded-2xl border border-navy-100 p-6 hover:shadow-brand hover:-translate-y-1 transition-all duration-300">
                         <span class="flex items-center justify-center w-12 h-12 rounded-xl bg-navy-50 text-navy-700">
@@ -149,9 +149,19 @@
                 @foreach ($categories as $i => $category)
                     <x-reveal :delay="$i * 60">
                         <a href="{{ route('shop.index', ['category' => $category->id]) }}" wire:navigate class="group flex flex-col items-center text-center gap-3 p-6 rounded-2xl border border-navy-100 hover:border-gold-500 hover:shadow-brand hover:-translate-y-1 transition-all duration-300">
-                            <span class="flex items-center justify-center w-14 h-14 rounded-xl bg-navy-50 text-navy-700 group-hover:bg-gold-500 group-hover:text-navy-900 transition-colors duration-300">
-                                <x-icon :name="$category->icon ?? 'cart'" class="w-7 h-7" />
-                            </span>
+                            @if ($category->image)
+                                <span class="flex items-center justify-center w-14 h-14 rounded-xl overflow-hidden">
+                                    <img
+                                        src="{{ asset('storage/'.$category->image) }}"
+                                        alt="{{ $category->name }}"
+                                        class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                    >
+                                </span>
+                            @else
+                                <span class="flex items-center justify-center w-14 h-14 rounded-xl bg-navy-50 text-navy-700 group-hover:bg-gold-500 group-hover:text-navy-900 transition-colors duration-300">
+                                    <x-icon :name="$category->icon ?? 'cart'" class="w-7 h-7" />
+                                </span>
+                            @endif
                             <span class="text-sm font-semibold text-navy-800">{{ $category->name }}</span>
                         </a>
                     </x-reveal>
@@ -178,11 +188,32 @@
                     <x-reveal :delay="$i * 80" class="group bg-white rounded-2xl border border-navy-100 overflow-hidden hover:shadow-brand hover:-translate-y-1 transition-all duration-300">
                         <a href="{{ route('shop.show', $product) }}" wire:navigate class="block">
                             <div class="aspect-square bg-navy-50 flex items-center justify-center relative overflow-hidden">
-                                <x-icon :name="$product->category->icon ?? 'cart'" class="w-16 h-16 text-navy-300 group-hover:scale-110 group-hover:text-gold-500 transition-all duration-300" stroke-width="1.2" />
+                                @if ($product->images->isNotEmpty())
+                                    <img
+                                        src="{{ asset('storage/'.$product->images->first()->path) }}"
+                                        alt="{{ $product->name }}"
+                                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    >
+                                @else
+                                    <x-icon :name="$product->category->icon ?? 'cart'" class="w-16 h-16 text-navy-300 group-hover:scale-110 group-hover:text-gold-500 transition-all duration-300" stroke-width="1.2" />
+                                @endif
+                                <span @class([
+                                    'absolute top-3 right-3 text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full',
+                                    'bg-green-100 text-green-700' => $product->isInStock(),
+                                    'bg-red-100 text-red-700' => ! $product->isInStock(),
+                                ])>
+                                    {{ $product->isInStock() ? 'In Stock' : 'Out of Stock' }}
+                                </span>
                             </div>
                             <div class="px-5 pt-5">
                                 <h3 class="font-semibold text-navy-900 text-sm">{{ $product->name }}</h3>
                                 <p class="text-xs text-navy-400 mt-1">per {{ $product->unit }}</p>
+                                <p class="text-xs text-navy-500 mt-1.5 flex items-center gap-1 truncate">
+                                    {{ $product->supplierProfile->business_name }}
+                                    @if ($product->supplierProfile->isVerified())
+                                        <x-icon name="shield" class="w-3 h-3 text-green-600 shrink-0" />
+                                    @endif
+                                </p>
                             </div>
                         </a>
                         <div class="px-5 pb-5">
@@ -203,6 +234,9 @@
             <x-reveal class="text-center max-w-2xl mx-auto">
                 <span class="text-sm font-semibold text-gold-800 uppercase tracking-wide">How it Works</span>
                 <h2 class="mt-3 font-heading text-3xl sm:text-4xl font-bold text-navy-900">From order to site, fully tracked</h2>
+                <p class="mt-3 text-sm font-semibold text-navy-400 tracking-wide">
+                    Discover <span class="text-gold-500 mx-1">→</span> Compare <span class="text-gold-500 mx-1">→</span> Purchase <span class="text-gold-500 mx-1">→</span> Pay <span class="text-gold-500 mx-1">→</span> Track <span class="text-gold-500 mx-1">→</span> Build Trust
+                </p>
             </x-reveal>
 
             <div class="mt-16 relative grid grid-cols-1 md:grid-cols-4 gap-10">

@@ -32,6 +32,11 @@ class SupplierProfile extends Model
         return $this->hasMany(Warehouse::class);
     }
 
+    public function shipments(): HasMany
+    {
+        return $this->hasMany(Shipment::class);
+    }
+
     public function isVerified(): bool
     {
         return $this->verified_at !== null;

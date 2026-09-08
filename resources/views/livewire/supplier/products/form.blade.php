@@ -1,11 +1,13 @@
 <?php
 
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\Warehouse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -19,14 +21,18 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
 
     public string $name = '';
     public ?int $category_id = null;
+    public ?int $brand_id = null;
     public string $description = '';
+    public string $specification = '';
     public string $unit = 'bag';
     public ?int $price = null;
     public ?int $compare_at_price = null;
     public int $min_order_qty = 1;
     public ?float $weight_kg = null;
     public int $quantity_available = 0;
-    public $image;
+
+    /** @var array<int, mixed> */
+    public array $images = [];
 
     public function mount(?Product $product = null): void
     {
@@ -40,7 +46,9 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
             $this->product = $product;
             $this->name = $product->name;
             $this->category_id = $product->category_id;
+            $this->brand_id = $product->brand_id;
             $this->description = (string) $product->description;
+            $this->specification = (string) $product->specification;
             $this->unit = $product->unit;
             $this->price = $product->price;
             $this->compare_at_price = $product->compare_at_price;
@@ -50,19 +58,28 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
         }
     }
 
+    public function removeImage(int $imageId): void
+    {
+        $image = ProductImage::where('product_id', $this->product?->id)->findOrFail($imageId);
+        Storage::disk('public')->delete($image->path);
+        $image->delete();
+    }
+
     public function save(): void
     {
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
             'category_id' => ['required', 'exists:categories,id'],
+            'brand_id' => ['nullable', 'exists:brands,id'],
             'description' => ['nullable', 'string'],
+            'specification' => ['nullable', 'string', 'max:2000'],
             'unit' => ['required', 'in:bag,ton,piece,meter,liter,roll'],
             'price' => ['required', 'integer', 'min:1'],
             'compare_at_price' => ['nullable', 'integer', 'min:1'],
             'min_order_qty' => ['required', 'integer', 'min:1'],
             'weight_kg' => ['nullable', 'numeric', 'min:0'],
             'quantity_available' => ['required', 'integer', 'min:0'],
-            'image' => ['nullable', 'image', 'max:4096'],
+            'images.*' => ['nullable', 'image', 'max:4096'],
         ]);
 
         $supplier = Auth::user()->supplierProfile;
@@ -71,7 +88,9 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
             $this->product->update([
                 'name' => $validated['name'],
                 'category_id' => $validated['category_id'],
+                'brand_id' => $validated['brand_id'],
                 'description' => $validated['description'],
+                'specification' => $validated['specification'],
                 'unit' => $validated['unit'],
                 'price' => $validated['price'],
                 'compare_at_price' => $validated['compare_at_price'],
@@ -82,10 +101,12 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
         } else {
             $product = $supplier->products()->create([
                 'category_id' => $validated['category_id'],
+                'brand_id' => $validated['brand_id'],
                 'name' => $validated['name'],
                 'slug' => Str::slug($validated['name']).'-'.Str::lower(Str::random(6)),
                 'sku' => 'SB-'.Str::upper(Str::random(8)),
                 'description' => $validated['description'],
+                'specification' => $validated['specification'],
                 'unit' => $validated['unit'],
                 'price' => $validated['price'],
                 'compare_at_price' => $validated['compare_at_price'],
@@ -95,8 +116,8 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
             ]);
         }
 
-        if ($this->image) {
-            $path = $this->image->store('product-images', 'public');
+        foreach ($this->images as $image) {
+            $path = $image->store('product-images', 'public');
             ProductImage::create(['product_id' => $product->id, 'path' => $path]);
         }
 
@@ -115,6 +136,7 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
     {
         return [
             'categories' => Category::orderBy('name')->get(),
+            'brands' => Brand::orderBy('name')->get(),
         ];
     }
 }; ?>
@@ -161,9 +183,28 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                 </div>
 
                 <div>
+                    <x-input-label for="brand_id" value="Brand / Manufacturer (optional)" />
+                    <select wire:model="brand_id" id="brand_id" class="mt-1 block w-full rounded-lg border-navy-200 focus:border-gold-500 focus:ring-gold-500 text-sm">
+                        <option value="">No brand</option>
+                        @foreach ($brands as $brand)
+                            <option value="{{ $brand->id }}">{{ $brand->name }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-xs text-navy-400">Don't see the brand you need? Let the Selbuildi team know and we'll add it.</p>
+                    <x-input-error :messages="$errors->get('brand_id')" class="mt-1" />
+                </div>
+
+                <div>
                     <x-input-label for="description" value="Description (optional)" />
                     <textarea wire:model="description" id="description" rows="3" class="mt-1 block w-full rounded-lg border-navy-200 focus:border-gold-500 focus:ring-gold-500 text-sm"></textarea>
                     <x-input-error :messages="$errors->get('description')" class="mt-1" />
+                </div>
+
+                <div>
+                    <x-input-label for="specification" value="Specification (optional)" />
+                    <textarea wire:model="specification" id="specification" rows="2" placeholder="E.g. 12mm, Grade 60, 12m length" class="mt-1 block w-full rounded-lg border-navy-200 focus:border-gold-500 focus:ring-gold-500 text-sm"></textarea>
+                    <p class="mt-1 text-xs text-navy-400">Size, grade, material - whatever helps a buyer match this to what they need.</p>
+                    <x-input-error :messages="$errors->get('specification')" class="mt-1" />
                 </div>
 
                 <div class="grid sm:grid-cols-3 gap-4">
@@ -198,12 +239,29 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                 </div>
 
                 <div>
-                    <x-input-label for="image" value="Product Image (optional)" />
-                    <input wire:model="image" id="image" type="file" accept="image/*" class="mt-1 block w-full text-sm text-navy-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-navy-50 file:text-navy-700 file:text-sm file:font-semibold hover:file:bg-navy-100" />
-                    <p class="mt-1 text-xs text-navy-400" wire:loading wire:target="image">Uploading&hellip;</p>
-                    <x-input-error :messages="$errors->get('image')" class="mt-1" />
+                    <x-input-label for="images" value="Product Photos (optional)" />
+                    <input wire:model="images" id="images" type="file" accept="image/*" multiple class="mt-1 block w-full text-sm text-navy-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-navy-50 file:text-navy-700 file:text-sm file:font-semibold hover:file:bg-navy-100" />
+                    <p class="mt-1 text-xs text-navy-400" wire:loading wire:target="images">Uploading&hellip;</p>
+                    <x-input-error :messages="$errors->get('images')" class="mt-1" />
+                    <x-input-error :messages="$errors->get('images.*')" class="mt-1" />
+                    <p class="mt-1 text-xs text-navy-400">Select multiple files to upload several photos at once. New uploads add to the gallery below; they don't replace it.</p>
+
                     @if ($product?->images->isNotEmpty())
-                        <p class="mt-1 text-xs text-navy-400">Uploading a new image adds another photo; it doesn't replace the existing one(s).</p>
+                        <div class="mt-3 grid grid-cols-4 sm:grid-cols-6 gap-2">
+                            @foreach ($product->images as $existingImage)
+                                <div wire:key="existing-image-{{ $existingImage->id }}" class="relative group aspect-square rounded-lg overflow-hidden border border-navy-100">
+                                    <img src="{{ asset('storage/'.$existingImage->path) }}" alt="" class="w-full h-full object-cover">
+                                    <button
+                                        type="button"
+                                        wire:click="removeImage({{ $existingImage->id }})"
+                                        wire:confirm="Remove this photo?"
+                                        class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-semibold transition-opacity"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            @endforeach
+                        </div>
                     @endif
                 </div>
 

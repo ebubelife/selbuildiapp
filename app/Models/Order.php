@@ -56,6 +56,11 @@ class Order extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function shipments(): HasMany
+    {
+        return $this->hasMany(Shipment::class);
+    }
+
     /**
      * Order items grouped by supplier, since each order can span multiple
      * suppliers who fulfill their portion independently.

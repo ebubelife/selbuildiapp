@@ -4,6 +4,7 @@ namespace App\Services\Payments;
 
 use App\Models\Payment;
 use App\Services\OrderFulfillmentService;
+use App\Services\TrustScoreService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -13,6 +14,7 @@ class PaymentVerificationService
     public function __construct(
         private readonly PaymentGatewayManager $gateways,
         private readonly OrderFulfillmentService $fulfillment,
+        private readonly TrustScoreService $trustScoreService,
     ) {}
 
     /**
@@ -75,6 +77,7 @@ class PaymentVerificationService
                 'order_id' => $payment->order_id,
             ]);
             $payment->update(['status' => 'failed']);
+            $this->recordPaymentFailed($payment);
 
             return;
         }
@@ -92,6 +95,7 @@ class PaymentVerificationService
                 'reported' => $result->amount,
             ]);
             $payment->update(['status' => 'failed']);
+            $this->recordPaymentFailed($payment);
 
             return;
         }
@@ -113,5 +117,19 @@ class PaymentVerificationService
             'order_id' => $payment->order_id,
             'amount' => $payment->amount,
         ]);
+    }
+
+    /**
+     * Feeds a failed payment attempt into the customer's Trust Score
+     * history (see #6 in the stakeholder tracker) - previously only
+     * successful payments showed up there at all.
+     */
+    private function recordPaymentFailed(Payment $payment): void
+    {
+        $order = $payment->order;
+
+        if ($order?->user) {
+            $this->trustScoreService->recordEvent($order->user, 'payment_failed', $order);
+        }
     }
 }

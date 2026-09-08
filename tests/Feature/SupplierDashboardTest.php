@@ -90,7 +90,7 @@ class SupplierDashboardTest extends TestCase
             ->set('price', 4500)
             ->set('min_order_qty', 1)
             ->set('quantity_available', 100)
-            ->set('image', UploadedFile::fake()->image('cement.jpg'))
+            ->set('images', [UploadedFile::fake()->image('cement.jpg')])
             ->call('save')
             ->assertRedirect(route('supplier.products.index'));
 

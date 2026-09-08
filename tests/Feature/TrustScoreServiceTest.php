@@ -29,6 +29,22 @@ class TrustScoreServiceTest extends TestCase
         $this->assertSame('bronze', $user->trustScore->tier);
     }
 
+    public function test_payment_failed_event_deducts_points(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $service = app(TrustScoreService::class);
+
+        $service->recordEvent($user, 'order_completed');
+        $service->recordEvent($user, 'payment_failed');
+
+        $this->assertDatabaseHas('trust_score_events', [
+            'user_id' => $user->id,
+            'event_type' => 'payment_failed',
+            'points_delta' => -2,
+        ]);
+        $this->assertSame(2, $user->trustScore->score);
+    }
+
     public function test_score_is_clamped_at_zero(): void
     {
         $user = User::factory()->create(['role' => 'customer']);

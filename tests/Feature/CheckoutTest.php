@@ -170,6 +170,12 @@ class CheckoutTest extends TestCase
             'changed_by' => $user->id,
         ]);
 
+        $this->assertDatabaseHas('shipments', [
+            'order_id' => $order->id,
+            'supplier_profile_id' => $product->supplier_profile_id,
+            'status' => 'pending',
+        ]);
+
         $this->assertSame(0, $user->fresh()->cart->items()->count());
 
         $component->assertRedirect(route('orders.show', $order));
