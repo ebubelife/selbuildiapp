@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use App\Models\Payment;
 use App\Models\PaymentGateway;
+use App\Models\Shipment;
 use App\Notifications\OrderPlaced;
 use App\Services\CartService;
 use App\Services\CreditService;
@@ -169,6 +170,17 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                 'note' => 'Order placed.',
                 'changed_by' => Auth::id(),
             ]);
+
+            // One shipment per distinct supplier on this order (see #4 in
+            // the stakeholder tracker) - each supplier fulfills and ships
+            // their own portion independently, even on a single order.
+            $cart->items->pluck('product.supplier_profile_id')->unique()->each(
+                fn ($supplierProfileId) => Shipment::create([
+                    'order_id' => $order->id,
+                    'supplier_profile_id' => $supplierProfileId,
+                    'status' => 'pending',
+                ])
+            );
 
             $cart->items()->delete();
 

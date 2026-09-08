@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
+use App\Models\Shipment;
 use App\Models\User;
 use App\Notifications\OrderStatusUpdated;
 use App\Notifications\SupplierOrderStatusUpdated;
@@ -35,6 +36,12 @@ class OrderFulfillmentService
                 'note' => $note ?: null,
                 'changed_by' => $changedBy?->id,
             ]);
+
+            // An admin-forced order-level status change (the only option
+            // today for a multi-supplier order - see class docblock on
+            // advanceItemStatus()) applies to every supplier's shipment on
+            // this order, since there's no per-supplier status input here.
+            $order->shipments->each(fn (Shipment $shipment) => $this->syncShipmentStatus($shipment, $status));
         });
 
         // The status change itself already committed above - a mail
@@ -74,6 +81,11 @@ class OrderFulfillmentService
     {
         $item->update(['fulfillment_status' => $status]);
 
+        $shipment = Shipment::firstOrCreate(
+            ['order_id' => $item->order_id, 'supplier_profile_id' => $item->supplier_profile_id],
+        );
+        $this->syncShipmentStatus($shipment, $status);
+
         $order = $item->order()->with('items')->first();
         $singleSupplierOrder = $order->items->pluck('supplier_profile_id')->unique()->count() === 1;
 
@@ -82,6 +94,28 @@ class OrderFulfillmentService
         }
 
         return $item->fresh();
+    }
+
+    /**
+     * Mirrors a fulfillment status onto its shipment record, stamping
+     * dispatched_at/delivered_at the first time each is reached. Never
+     * overwrites a timestamp that's already set, so a later status change
+     * (or the order-level and item-level paths both firing) can't clobber
+     * the original dispatch/delivery time.
+     */
+    private function syncShipmentStatus(Shipment $shipment, string $status): void
+    {
+        $updates = ['status' => $status];
+
+        if ($status === 'shipped' && ! $shipment->dispatched_at) {
+            $updates['dispatched_at'] = now();
+        }
+
+        if ($status === 'delivered' && ! $shipment->delivered_at) {
+            $updates['delivered_at'] = now();
+        }
+
+        $shipment->update($updates);
     }
 
     /**
