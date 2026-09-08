@@ -18,6 +18,7 @@ class TrustScoreService
         'order_completed' => 4,
         'on_time_payment' => 3,
         'late_payment' => -5,
+        'payment_failed' => -2,
         'dispute' => -8,
         'cancellation' => -3,
         'kyc_verified' => 5,

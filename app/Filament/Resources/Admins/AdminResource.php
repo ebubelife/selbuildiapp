@@ -11,10 +11,12 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Auth\Access\Response;
@@ -91,6 +93,10 @@ class AdminResource extends Resource
                         'super_admin' => 'Super Admin',
                     ])
                     ->required(),
+                Toggle::make('is_active')
+                    ->label('Account active')
+                    ->helperText('A deactivated admin is signed out immediately and can no longer log in or access the panel.')
+                    ->default(true),
                 TextInput::make('password')
                     ->password()
                     ->revealable()
@@ -113,6 +119,7 @@ class AdminResource extends Resource
                         'danger' => 'super_admin',
                     ])
                     ->formatStateUsing(fn (string $state) => $state === 'super_admin' ? 'Super Admin' : 'Admin'),
+                IconColumn::make('is_active')->label('Active')->boolean(),
                 TextColumn::make('created_at')->label('Added')->date()->sortable(),
             ])
             ->defaultSort('created_at', 'desc')

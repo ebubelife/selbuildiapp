@@ -38,6 +38,19 @@ class LoginForm extends Form
             ]);
         }
 
+        // Checked only after the credentials already matched - a
+        // deactivated account still gets a clear reason rather than being
+        // told (misleadingly) that the password is wrong, but a wrong
+        // password on a deactivated account still just says "failed" like
+        // normal, which avoids leaking account status to a guesser.
+        if (! Auth::user()->is_active) {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'form.email' => 'This account has been deactivated. Contact support for help.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

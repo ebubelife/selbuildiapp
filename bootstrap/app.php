@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\TrackPageView;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -19,6 +20,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->web(append: [
+            EnsureUserIsActive::class,
             TrackPageView::class,
         ]);
     })

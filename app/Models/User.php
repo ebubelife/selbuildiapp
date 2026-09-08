@@ -17,7 +17,7 @@ use Illuminate\Notifications\Notifiable;
 
 #[Fillable([
     'name', 'first_name', 'last_name', 'email', 'password', 'role', 'phone',
-    'country', 'project_country', 'city', 'account_type', 'preferred_currency', 'is_diaspora',
+    'country', 'project_country', 'city', 'account_type', 'preferred_currency', 'is_diaspora', 'is_active',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
@@ -35,6 +35,7 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'is_diaspora' => 'boolean',
+            'is_active' => 'boolean',
             'password' => 'hashed',
         ];
     }
@@ -76,7 +77,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function trustScoreEvents(): HasMany
     {
-        return $this->hasMany(TrustScoreEvent::class);
+        return $this->hasMany(TrustScoreEvent::class)->orderBy('created_at');
     }
 
     public function creditAccount(): HasOne
@@ -106,6 +107,6 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->isAdmin();
+        return $this->isAdmin() && $this->is_active;
     }
 }
