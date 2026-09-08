@@ -61,7 +61,7 @@ Route::get('/', function () {
         'categories' => Category::whereNull('parent_id')->orderBy('sort_order')->get(),
         'featuredProducts' => Product::where('is_active', true)
             ->where('is_featured', true)
-            ->with('category')
+            ->with(['category', 'supplierProfile', 'images', 'inventories'])
             ->latest()
             ->limit(4)
             ->get(),
@@ -74,6 +74,7 @@ Volt::route('suppliers/{supplier:slug}', 'suppliers.show')->name('suppliers.show
 
 Route::middleware('auth')->group(function () {
     Volt::route('addresses', 'addresses.index')->name('addresses.index');
+    Volt::route('support/new', 'support.create')->name('support.create');
     Volt::route('checkout', 'checkout.index')->name('checkout.index');
     Volt::route('orders', 'orders.index')->name('orders.index');
     Volt::route('orders/{order}', 'orders.show')->name('orders.show');

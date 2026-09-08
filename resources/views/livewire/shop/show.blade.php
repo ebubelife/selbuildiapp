@@ -13,7 +13,7 @@ new #[Layout('components.layouts.site')] class extends Component
 
     public function mount(Product $product): void
     {
-        $this->product = $product->load(['category', 'supplierProfile', 'variants', 'images']);
+        $this->product = $product->load(['category', 'brand', 'supplierProfile', 'variants', 'images', 'inventories']);
         $this->quantity = max(1, $product->min_order_qty);
     }
 
@@ -124,7 +124,12 @@ new #[Layout('components.layouts.site')] class extends Component
 
                 <!-- Details -->
                 <x-reveal :delay="100">
-                    <p class="text-sm font-semibold text-gold-800 uppercase tracking-wide">{{ $product->category->name }}</p>
+                    <p class="text-sm font-semibold text-gold-800 uppercase tracking-wide">
+                        {{ $product->category->name }}
+                        @if ($product->brand)
+                            &middot; {{ $product->brand->name }}
+                        @endif
+                    </p>
                     <h1 class="mt-2 font-heading text-3xl font-bold text-navy-900">{{ $product->name }}</h1>
 
                     <a href="{{ route('suppliers.show', $product->supplierProfile) }}" wire:navigate class="mt-3 inline-flex items-center gap-2 text-sm text-navy-500 hover:text-gold-600 transition-colors">
@@ -143,8 +148,21 @@ new #[Layout('components.layouts.site')] class extends Component
                         <span class="text-sm text-navy-500">per {{ $product->unit }}</span>
                     </div>
 
+                    <span @class([
+                        'mt-3 inline-block text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full',
+                        'bg-green-100 text-green-700' => $product->stockStatus() === 'in_stock',
+                        'bg-amber-100 text-amber-700' => $product->stockStatus() === 'low_stock',
+                        'bg-red-100 text-red-700' => $product->stockStatus() === 'out_of_stock',
+                    ])>
+                        {{ $product->stockStatusLabel() }}
+                    </span>
+
                     @if ($product->description)
                         <p class="mt-4 text-navy-600 leading-relaxed">{{ $product->description }}</p>
+                    @endif
+
+                    @if ($product->specification)
+                        <p class="mt-2 text-sm text-navy-500"><span class="font-semibold text-navy-700">Specification:</span> {{ $product->specification }}</p>
                     @endif
 
                     <p class="mt-4 text-xs text-navy-400">Minimum order: {{ $product->min_order_qty }} {{ str($product->unit)->plural($product->min_order_qty) }}</p>
@@ -170,6 +188,11 @@ new #[Layout('components.layouts.site')] class extends Component
                             <span wire:loading wire:target="addToCart">Adding...</span>
                         </x-primary-button>
                     </div>
+
+                    <a href="{{ route('support.create', ['product' => $product->id]) }}" wire:navigate class="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-navy-500 hover:text-gold-600 transition-colors">
+                        <x-icon name="check" class="w-3.5 h-3.5" />
+                        Need a bulk order or custom quote? Request a Quote
+                    </a>
 
                     @if ($justAdded)
                         <p
