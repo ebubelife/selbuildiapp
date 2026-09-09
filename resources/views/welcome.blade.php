@@ -366,15 +366,10 @@
                     A contractor with a strong record, a developer with a history of successful projects, or a family consistently investing in their home should be able to build a record of trust that creates new opportunities.
                 </p>
                 <div class="mt-8 grid grid-cols-2 gap-4">
-                    @foreach ([
-                        ['tier' => 'Bronze', 'perk' => 'Eligible to apply for credit'],
-                        ['tier' => 'Silver', 'perk' => '30% deposit, balance on delivery'],
-                        ['tier' => 'Gold', 'perk' => 'Net-15 credit terms'],
-                        ['tier' => 'Platinum', 'perk' => 'Net-30, higher limits'],
-                    ] as $tier)
+                    @foreach ($creditTiers as $tier)
                         <div class="rounded-xl border border-white/10 bg-white/5 p-4">
-                            <div class="font-heading font-semibold text-gold-500 text-sm">{{ $tier['tier'] }}</div>
-                            <div class="text-xs text-navy-200 mt-1 leading-relaxed">{{ $tier['perk'] }}</div>
+                            <div class="font-heading font-semibold text-gold-500 text-sm">{{ $tier->tierLabel() }}</div>
+                            <div class="text-xs text-navy-200 mt-1 leading-relaxed">{{ $tier->perk_headline }}</div>
                         </div>
                     @endforeach
                 </div>

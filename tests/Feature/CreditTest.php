@@ -99,6 +99,59 @@ class CreditTest extends TestCase
         $this->assertSame('pending', $account->status);
     }
 
+    public function test_lowering_a_tiers_auto_approve_limit_actually_changes_approval_behavior(): void
+    {
+        \App\Models\CreditTierSetting::where('tier', 'gold')->update(['auto_approve_limit' => 50000]);
+        $user = $this->withTier(User::factory()->create(['role' => 'customer']), 'gold');
+
+        $account = app(CreditService::class)->applyForCredit($user, 150000);
+
+        // Same request that auto-approved in the test above now requires
+        // review, purely because the admin-editable limit changed.
+        $this->assertSame('pending', $account->status);
+    }
+
+    public function test_removing_a_tiers_auto_approve_limit_forces_manual_review(): void
+    {
+        \App\Models\CreditTierSetting::where('tier', 'gold')->update(['auto_approve_limit' => null]);
+        $user = $this->withTier(User::factory()->create(['role' => 'customer']), 'gold');
+
+        $account = app(CreditService::class)->applyForCredit($user, 10000);
+
+        $this->assertSame('pending', $account->status);
+    }
+
+    public function test_changing_a_tiers_net_terms_days_changes_the_drawdown_due_date(): void
+    {
+        \App\Models\CreditTierSetting::where('tier', 'platinum')->update(['net_terms_days' => 45]);
+        $user = $this->withTier(User::factory()->create(['role' => 'customer']), 'platinum');
+        $account = CreditAccount::create([
+            'user_id' => $user->id,
+            'credit_limit' => 1000000,
+            'available_credit' => 1000000,
+            'status' => 'approved',
+            'approved_at' => now(),
+        ]);
+        $order = Order::create([
+            'order_number' => Order::generateOrderNumber(),
+            'user_id' => $user->id,
+            'status' => 'pending',
+            'subtotal' => 50000,
+            'shipping_fee' => 0,
+            'tax' => 0,
+            'discount' => 0,
+            'total' => 50000,
+            'currency' => 'XAF',
+            'payment_status' => 'pending',
+            'payment_method' => 'selbuildi_credit',
+            'placed_at' => now(),
+        ]);
+
+        $transaction = app(CreditService::class)->drawdown($account, $order);
+
+        $this->assertSame(now()->addDays(45)->toDateString(), $transaction->due_date->toDateString());
+    }
+
     public function test_credit_review_command_approves_a_pending_application(): void
     {
         $user = $this->withTier(User::factory()->create(['role' => 'customer']), 'bronze', score: 10);

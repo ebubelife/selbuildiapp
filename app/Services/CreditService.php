@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CreditAccount;
+use App\Models\CreditTierSetting;
 use App\Models\CreditTransaction;
 use App\Models\Order;
 use App\Models\User;
@@ -10,23 +11,6 @@ use Illuminate\Support\Facades\DB;
 
 class CreditService
 {
-    /**
-     * Only Gold/Platinum unlock real Net-15/Net-30 credit per the tier
-     * table in PROJECT_PLAN.md §5. Bronze is "eligible to apply" but
-     * always routes to manual review; Silver's perk is a 30%-deposit
-     * checkout flow, not a credit line, so it isn't auto-approved here
-     * either - a Silver application still has to go through review.
-     */
-    public const AUTO_APPROVE_LIMITS = [
-        'gold' => 200000,
-        'platinum' => 500000,
-    ];
-
-    public const NET_TERMS_DAYS = [
-        'gold' => 15,
-        'platinum' => 30,
-    ];
-
     public function __construct(private TrustScoreService $trustScoreService)
     {
     }
@@ -36,10 +20,18 @@ class CreditService
         return $this->trustScoreService->currentTier($user) !== 'unrated';
     }
 
+    /**
+     * Only tiers with an auto_approve_limit actually set (Gold/Platinum,
+     * by default) auto-approve here - see CreditTierSetting. Bronze is
+     * "eligible to apply" but always routes to manual review; Silver's
+     * perk is a 30%-deposit checkout flow, not a credit line, so it isn't
+     * auto-approved either - a Silver application still has to go
+     * through review, same as Bronze.
+     */
     public function applyForCredit(User $user, int $requestedLimit): CreditAccount
     {
         $tier = $this->trustScoreService->currentTier($user);
-        $autoLimit = self::AUTO_APPROVE_LIMITS[$tier] ?? 0;
+        $autoLimit = CreditTierSetting::where('tier', $tier)->value('auto_approve_limit') ?? 0;
 
         $approved = $autoLimit > 0 && $requestedLimit <= $autoLimit;
 
@@ -87,7 +79,7 @@ class CreditService
     public function drawdown(CreditAccount $account, Order $order): CreditTransaction
     {
         $tier = $this->trustScoreService->currentTier($account->user);
-        $termsDays = self::NET_TERMS_DAYS[$tier] ?? 15;
+        $termsDays = CreditTierSetting::where('tier', $tier)->value('net_terms_days') ?? 15;
 
         return DB::transaction(function () use ($account, $order, $termsDays) {
             $account->decrement('available_credit', $order->total);

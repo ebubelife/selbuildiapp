@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
+use App\Models\CreditTierSetting;
 use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductImage;
@@ -70,5 +71,15 @@ class HomepageTest extends TestCase
             ->assertSee('Douala Building Depot')
             ->assertSee('In Stock')
             ->assertSee('storage/product-images/cement.jpg', escape: false);
+    }
+
+    public function test_the_trust_and_credit_section_reflects_admin_edited_tier_terms(): void
+    {
+        CreditTierSetting::where('tier', 'gold')->update(['perk_headline' => 'Net-20 credit terms']);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('Net-20 credit terms')
+            ->assertDontSee('Net-15 credit terms');
     }
 }

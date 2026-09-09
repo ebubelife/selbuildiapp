@@ -6,6 +6,7 @@ use App\Http\Controllers\PaymentCallbackController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\SitemapController;
 use App\Models\Category;
+use App\Models\CreditTierSetting;
 use App\Models\Product;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
@@ -65,6 +66,7 @@ Route::get('/', function () {
             ->latest()
             ->limit(4)
             ->get(),
+        'creditTiers' => CreditTierSetting::orderBy('id')->get(),
     ]);
 })->name('home');
 
