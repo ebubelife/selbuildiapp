@@ -1,0 +1,141 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Filament\Resources\Products\Pages\CreateProduct;
+use App\Filament\Resources\Products\Pages\EditProduct;
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\Product;
+use App\Models\ProductImage;
+use App\Models\SupplierProfile;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
+use Tests\TestCase;
+
+class ProductAdminTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function supplier(): SupplierProfile
+    {
+        return SupplierProfile::create([
+            'user_id' => User::factory()->create(['role' => 'supplier'])->id,
+            'business_name' => 'Test Supplier',
+            'slug' => 'test-supplier-'.uniqid(),
+            'verified_at' => now(),
+        ]);
+    }
+
+    private function category(): Category
+    {
+        return Category::create(['name' => 'Cement', 'slug' => 'cement-'.uniqid(), 'icon' => 'cement']);
+    }
+
+    public function test_an_admin_can_create_a_product_with_photos_and_specification(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $supplier = $this->supplier();
+        $category = $this->category();
+        $brand = Brand::create(['name' => 'Dangote', 'slug' => 'dangote']);
+
+        $this->actingAs($admin, 'admin');
+
+        Livewire::test(CreateProduct::class)
+            ->fillForm([
+                'supplier_profile_id' => $supplier->id,
+                'name' => 'Dangote Cement 50kg',
+                'category_id' => $category->id,
+                'brand_id' => $brand->id,
+                'unit' => 'bag',
+                'price' => 4500,
+                'min_order_qty' => 1,
+                'specification' => '12mm, Grade 60, 12m length',
+                'images' => ['product-images/a.jpg', 'product-images/b.jpg'],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $product = Product::where('name', 'Dangote Cement 50kg')->sole();
+
+        $this->assertSame('12mm, Grade 60, 12m length', $product->specification);
+        $this->assertSame($brand->id, $product->brand_id);
+        $this->assertCount(2, $product->images);
+        $this->assertSame(['product-images/a.jpg', 'product-images/b.jpg'], $product->images->pluck('path')->all());
+    }
+
+    public function test_an_admin_can_add_a_photo_to_an_existing_product(): void
+    {
+        Storage::fake('public');
+        // FileUpload drops any path from its state that doesn't actually
+        // exist on disk when resolving the field's current value, so the
+        // fake files need to be genuinely "there" for fillForm/assertFormSet
+        // to see them - matching what a real upload would have already done.
+        Storage::disk('public')->put('product-images/old.jpg', 'fake-content');
+        Storage::disk('public')->put('product-images/new.jpg', 'fake-content');
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $product = Product::create([
+            'supplier_profile_id' => $this->supplier()->id,
+            'category_id' => $this->category()->id,
+            'name' => 'Roofing Sheet',
+            'slug' => 'roofing-sheet-'.uniqid(),
+            'sku' => 'SB-'.uniqid(),
+            'unit' => 'piece',
+            'price' => 9500,
+            'min_order_qty' => 1,
+            'is_active' => true,
+        ]);
+        ProductImage::create(['product_id' => $product->id, 'path' => 'product-images/old.jpg', 'sort_order' => 0]);
+
+        $this->actingAs($admin, 'admin');
+
+        Livewire::test(EditProduct::class, ['record' => $product->getRouteKey()])
+            ->assertFormSet(['images' => ['product-images/old.jpg']])
+            ->fillForm(['images' => ['product-images/old.jpg', 'product-images/new.jpg']])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $product->refresh();
+        $this->assertCount(2, $product->images);
+        $this->assertSame(['product-images/old.jpg', 'product-images/new.jpg'], $product->images->pluck('path')->all());
+    }
+
+    public function test_an_admin_removing_a_photo_from_the_gallery_deletes_it(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('product-images/old.jpg', 'fake-content');
+        Storage::disk('public')->put('product-images/keep.jpg', 'fake-content');
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $product = Product::create([
+            'supplier_profile_id' => $this->supplier()->id,
+            'category_id' => $this->category()->id,
+            'name' => 'Roofing Sheet',
+            'slug' => 'roofing-sheet-'.uniqid(),
+            'sku' => 'SB-'.uniqid(),
+            'unit' => 'piece',
+            'price' => 9500,
+            'min_order_qty' => 1,
+            'is_active' => true,
+        ]);
+        ProductImage::create(['product_id' => $product->id, 'path' => 'product-images/old.jpg', 'sort_order' => 0]);
+        ProductImage::create(['product_id' => $product->id, 'path' => 'product-images/keep.jpg', 'sort_order' => 1]);
+
+        $this->actingAs($admin, 'admin');
+
+        Livewire::test(EditProduct::class, ['record' => $product->getRouteKey()])
+            ->fillForm(['images' => ['product-images/keep.jpg']])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $product->refresh();
+        $this->assertCount(1, $product->images);
+        $this->assertSame('product-images/keep.jpg', $product->images->first()->path);
+        Storage::disk('public')->assertMissing('product-images/old.jpg');
+    }
+}

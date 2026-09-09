@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Products\Schemas;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\SupplierProfile;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -42,6 +43,23 @@ class ProductForm
                 TextInput::make('compare_at_price')->numeric()->suffix('XAF'),
                 TextInput::make('min_order_qty')->numeric()->required()->default(1),
                 Textarea::make('description')->columnSpanFull(),
+                Textarea::make('specification')
+                    ->label('Specification')
+                    ->helperText('Size, grade, material - e.g. "12mm, Grade 60, 12m length".')
+                    ->columnSpanFull(),
+                // Not a real column on products - CreateProduct/EditProduct
+                // pull this out of the form data and reconcile it against
+                // the product's images() relation themselves, the same way
+                // the supplier-facing product form already handles
+                // multiple photos.
+                FileUpload::make('images')
+                    ->label('Product Photos')
+                    ->multiple()
+                    ->image()
+                    ->disk('public')
+                    ->directory('product-images')
+                    ->reorderable()
+                    ->columnSpanFull(),
                 Toggle::make('is_active')->default(true),
                 Toggle::make('is_featured'),
             ]);
