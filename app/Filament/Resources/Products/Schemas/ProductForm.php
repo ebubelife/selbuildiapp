@@ -42,6 +42,18 @@ class ProductForm
                 TextInput::make('price')->numeric()->required()->suffix('XAF'),
                 TextInput::make('compare_at_price')->numeric()->suffix('XAF'),
                 TextInput::make('min_order_qty')->numeric()->required()->default(1),
+                // Not a real column on products - CreateProduct/EditProduct
+                // pull this out of the form data and upsert it onto the
+                // supplier's Inventory record themselves (same as the
+                // supplier-facing form). Without this, a product created
+                // here would always show "Out of Stock" - stock lives on
+                // Inventory, not on the product itself.
+                TextInput::make('quantity_available')
+                    ->label('Stock Quantity')
+                    ->numeric()
+                    ->required()
+                    ->default(0)
+                    ->helperText('How many units are available right now.'),
                 Textarea::make('description')->columnSpanFull(),
                 Textarea::make('specification')
                     ->label('Specification')

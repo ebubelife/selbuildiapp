@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Products\Pages;
 
 use App\Filament\Resources\Products\ProductResource;
+use App\Models\Inventory;
 use App\Models\ProductImage;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
@@ -15,6 +16,8 @@ class EditProduct extends EditRecord
     /** @var array<int, string> */
     private array $imagePaths = [];
 
+    private int $quantityAvailable = 0;
+
     protected function getHeaderActions(): array
     {
         return [
@@ -24,9 +27,11 @@ class EditProduct extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        // 'images' isn't a column on products - fill the field from the
-        // real images() relation so the admin sees the existing gallery.
+        // Neither is a real column on products - fill both from their
+        // actual source (the images() relation, and the sum across every
+        // Inventory row) so the admin sees the current real state.
         $data['images'] = $this->record->images()->orderBy('sort_order')->pluck('path')->all();
+        $data['quantity_available'] = $this->record->inventories()->sum('quantity_available');
 
         return $data;
     }
@@ -36,6 +41,9 @@ class EditProduct extends EditRecord
         $this->imagePaths = $data['images'] ?? [];
         unset($data['images']);
 
+        $this->quantityAvailable = (int) ($data['quantity_available'] ?? 0);
+        unset($data['quantity_available']);
+
         return $data;
     }
 
@@ -43,7 +51,9 @@ class EditProduct extends EditRecord
      * Reconciles the product's images() relation against whatever paths
      * are left in the form: anything removed from the gallery gets
      * deleted (row + file), anything new gets a ProductImage row, and
-     * order is rewritten to match the field's (reorderable) order.
+     * order is rewritten to match the field's (reorderable) order. Also
+     * upserts stock onto the supplier's default warehouse, same as the
+     * supplier-facing form.
      */
     protected function afterSave(): void
     {
@@ -74,5 +84,14 @@ class EditProduct extends EditRecord
             Storage::disk('public')->delete($image->path);
             $image->delete();
         }
+
+        $supplier = $this->record->supplierProfile;
+        $warehouse = $supplier->warehouses()->first()
+            ?? $supplier->warehouses()->create(['name' => $supplier->business_name.' - Main Warehouse']);
+
+        Inventory::updateOrCreate(
+            ['product_id' => $this->record->id, 'product_variant_id' => null, 'warehouse_id' => $warehouse->id],
+            ['quantity_available' => $this->quantityAvailable]
+        );
     }
 }

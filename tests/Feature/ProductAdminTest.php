@@ -6,10 +6,12 @@ use App\Filament\Resources\Products\Pages\CreateProduct;
 use App\Filament\Resources\Products\Pages\EditProduct;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\SupplierProfile;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -56,6 +58,7 @@ class ProductAdminTest extends TestCase
                 'min_order_qty' => 1,
                 'specification' => '12mm, Grade 60, 12m length',
                 'images' => ['product-images/a.jpg', 'product-images/b.jpg'],
+                'quantity_available' => 250,
             ])
             ->call('create')
             ->assertHasNoFormErrors();
@@ -66,6 +69,67 @@ class ProductAdminTest extends TestCase
         $this->assertSame($brand->id, $product->brand_id);
         $this->assertCount(2, $product->images);
         $this->assertSame(['product-images/a.jpg', 'product-images/b.jpg'], $product->images->pluck('path')->all());
+        $this->assertSame(250, $product->inventories->sum('quantity_available'));
+        $this->assertTrue($product->isInStock());
+    }
+
+    public function test_a_product_created_without_a_quantity_column_still_creates_an_inventory_row_defaulting_to_zero(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $supplier = $this->supplier();
+        $category = $this->category();
+
+        $this->actingAs($admin, 'admin');
+
+        Livewire::test(CreateProduct::class)
+            ->fillForm([
+                'supplier_profile_id' => $supplier->id,
+                'name' => 'Zero Stock Product',
+                'category_id' => $category->id,
+                'unit' => 'bag',
+                'price' => 4500,
+                'min_order_qty' => 1,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $product = Product::where('name', 'Zero Stock Product')->sole();
+
+        $this->assertSame(1, $product->inventories()->count());
+        $this->assertFalse($product->isInStock());
+    }
+
+    public function test_an_admin_can_update_stock_quantity_when_editing_a_product(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $supplier = $this->supplier();
+        $product = Product::create([
+            'supplier_profile_id' => $supplier->id,
+            'category_id' => $this->category()->id,
+            'name' => 'Roofing Sheet',
+            'slug' => 'roofing-sheet-'.uniqid(),
+            'sku' => 'SB-'.uniqid(),
+            'unit' => 'piece',
+            'price' => 9500,
+            'min_order_qty' => 1,
+            'is_active' => true,
+        ]);
+        $warehouse = Warehouse::create(['supplier_profile_id' => $supplier->id, 'name' => 'Main Warehouse']);
+        Inventory::create(['product_id' => $product->id, 'warehouse_id' => $warehouse->id, 'quantity_available' => 5]);
+
+        $this->actingAs($admin, 'admin');
+
+        Livewire::test(EditProduct::class, ['record' => $product->getRouteKey()])
+            ->assertFormSet(['quantity_available' => 5])
+            ->fillForm(['quantity_available' => 40])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(40, $product->inventories()->sum('quantity_available'));
     }
 
     public function test_an_admin_can_add_a_photo_to_an_existing_product(): void
