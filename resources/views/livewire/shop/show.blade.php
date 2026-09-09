@@ -2,6 +2,7 @@
 
 use App\Models\Product;
 use App\Services\CartService;
+use Illuminate\Support\Js;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -114,12 +115,96 @@ new #[Layout('components.layouts.site')] class extends Component
             <div class="grid lg:grid-cols-2 gap-12">
                 <!-- Image -->
                 <x-reveal>
-                    <div class="aspect-square bg-navy-50 rounded-2xl flex items-center justify-center relative overflow-hidden">
-                        <x-icon :name="$product->category->icon ?? 'cart'" class="w-32 h-32 text-navy-300" stroke-width="1" />
-                        @if ($product->is_featured)
-                            <span class="absolute top-4 left-4 bg-gold-500 text-navy-900 text-xs font-bold uppercase tracking-wide px-3 py-1.5 rounded-full">Featured</span>
-                        @endif
-                    </div>
+                    @if ($product->images->isNotEmpty())
+                        <div
+                            x-data="{
+                                active: 0,
+                                images: {{ Js::from($product->images->map(fn ($image) => asset('storage/'.$image->path))->all()) }},
+                                touchStartX: 0,
+                                next() { this.active = (this.active + 1) % this.images.length },
+                                prev() { this.active = (this.active - 1 + this.images.length) % this.images.length },
+                            }"
+                        >
+                            <div
+                                class="aspect-square bg-navy-50 rounded-2xl relative overflow-hidden"
+                                @touchstart="touchStartX = $event.changedTouches[0].screenX"
+                                @touchend="
+                                    let delta = $event.changedTouches[0].screenX - touchStartX;
+                                    if (delta > 50) prev();
+                                    else if (delta < -50) next();
+                                "
+                            >
+                                <template x-for="(image, index) in images" :key="index">
+                                    <img
+                                        :src="image"
+                                        alt="{{ $product->name }}"
+                                        x-show="active === index"
+                                        x-transition:enter="transition ease-out duration-300"
+                                        x-transition:enter-start="opacity-0"
+                                        x-transition:enter-end="opacity-100"
+                                        class="absolute inset-0 w-full h-full object-cover"
+                                    >
+                                </template>
+
+                                @if ($product->is_featured)
+                                    <span class="absolute top-4 left-4 z-10 bg-gold-500 text-navy-900 text-xs font-bold uppercase tracking-wide px-3 py-1.5 rounded-full">Featured</span>
+                                @endif
+
+                                @if ($product->images->count() > 1)
+                                    <button
+                                        type="button"
+                                        @click="prev"
+                                        aria-label="Previous photo"
+                                        class="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-9 h-9 rounded-full bg-white/90 text-navy-900 shadow-md hover:bg-white transition-colors"
+                                    >
+                                        <x-icon name="chevron-right" class="w-4 h-4 rotate-180" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="next"
+                                        aria-label="Next photo"
+                                        class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-9 h-9 rounded-full bg-white/90 text-navy-900 shadow-md hover:bg-white transition-colors"
+                                    >
+                                        <x-icon name="chevron-right" class="w-4 h-4" />
+                                    </button>
+
+                                    <div class="absolute bottom-3 inset-x-0 flex items-center justify-center gap-1.5">
+                                        <template x-for="(image, index) in images" :key="index">
+                                            <button
+                                                type="button"
+                                                @click="active = index"
+                                                aria-label="Go to photo"
+                                                class="h-1.5 rounded-full transition-all duration-300"
+                                                :class="active === index ? 'w-5 bg-white' : 'w-1.5 bg-white/50'"
+                                            ></button>
+                                        </template>
+                                    </div>
+                                @endif
+                            </div>
+
+                            @if ($product->images->count() > 1)
+                                <div class="mt-4 grid grid-cols-5 gap-3">
+                                    <template x-for="(image, index) in images" :key="index">
+                                        <button
+                                            type="button"
+                                            @click="active = index"
+                                            class="aspect-square rounded-lg overflow-hidden ring-2 transition-colors"
+                                            :class="active === index ? 'ring-gold-500' : 'ring-transparent hover:ring-navy-200'"
+                                        >
+                                            <img :src="image" alt="" class="w-full h-full object-cover">
+                                        </button>
+                                    </template>
+                                </div>
+                            @endif
+                        </div>
+                    @else
+                        <div class="aspect-square bg-navy-50 rounded-2xl flex items-center justify-center relative overflow-hidden">
+                            <x-icon :name="$product->category->icon ?? 'cart'" class="w-32 h-32 text-navy-300" stroke-width="1" />
+                            @if ($product->is_featured)
+                                <span class="absolute top-4 left-4 bg-gold-500 text-navy-900 text-xs font-bold uppercase tracking-wide px-3 py-1.5 rounded-full">Featured</span>
+                            @endif
+                        </div>
+                    @endif
                 </x-reveal>
 
                 <!-- Details -->

@@ -94,6 +94,43 @@ class ShopTest extends TestCase
         $response->assertSee('Test Supplier Co');
     }
 
+    public function test_product_page_shows_a_single_photo_without_carousel_controls(): void
+    {
+        $product = $this->createProduct();
+        ProductImage::create(['product_id' => $product->id, 'path' => 'product-images/only.jpg']);
+
+        // The image list is embedded as JSON for Alpine's x-data (via
+        // Js::from), which escapes slashes - so just the filename is
+        // asserted here rather than the full path.
+        $this->get(route('shop.show', $product))
+            ->assertOk()
+            ->assertSee('only.jpg', escape: false)
+            ->assertDontSee('Previous photo');
+    }
+
+    public function test_product_page_shows_all_photos_with_carousel_controls_when_there_are_multiple(): void
+    {
+        $product = $this->createProduct();
+        ProductImage::create(['product_id' => $product->id, 'path' => 'product-images/one.jpg', 'sort_order' => 0]);
+        ProductImage::create(['product_id' => $product->id, 'path' => 'product-images/two.jpg', 'sort_order' => 1]);
+
+        $this->get(route('shop.show', $product))
+            ->assertOk()
+            ->assertSee('one.jpg', escape: false)
+            ->assertSee('two.jpg', escape: false)
+            ->assertSee('Previous photo')
+            ->assertSee('Next photo');
+    }
+
+    public function test_product_page_falls_back_to_the_category_icon_with_no_photos(): void
+    {
+        $product = $this->createProduct();
+
+        $this->get(route('shop.show', $product))
+            ->assertOk()
+            ->assertDontSee('Previous photo');
+    }
+
     public function test_supplier_profile_page_renders(): void
     {
         $product = $this->createProduct();
