@@ -6,6 +6,7 @@ use App\Filament\Resources\Products\ProductResource;
 use App\Models\Inventory;
 use App\Models\ProductImage;
 use Filament\Actions\DeleteAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Storage;
 
@@ -27,10 +28,9 @@ class EditProduct extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        // Neither is a real column on products - fill both from their
-        // actual source (the images() relation, and the sum across every
-        // Inventory row) so the admin sees the current real state.
-        $data['images'] = $this->record->images()->orderBy('sort_order')->pluck('path')->all();
+        // Existing photos are shown/removed via the separate gallery
+        // (see product-images-manager.blade.php) - this field stays
+        // empty on load and is only ever for photos being added now.
         $data['quantity_available'] = $this->record->inventories()->sum('quantity_available');
 
         return $data;
@@ -48,41 +48,35 @@ class EditProduct extends EditRecord
     }
 
     /**
-     * Reconciles the product's images() relation against whatever paths
-     * are left in the form: anything removed from the gallery gets
-     * deleted (row + file), anything new gets a ProductImage row, and
-     * order is rewritten to match the field's (reorderable) order. Also
-     * upserts stock onto the supplier's default warehouse, same as the
-     * supplier-facing form.
+     * Deletes a single existing photo right away - deliberately not tied
+     * to the form's Save button, so removing a photo can't be lost by
+     * navigating away, and there's no risk of it conflicting with
+     * whatever's mid-upload in the "Add Photos" field.
      */
+    public function removeExistingImage(int $imageId): void
+    {
+        $image = $this->record->images()->findOrFail($imageId);
+
+        Storage::disk('public')->delete($image->path);
+        $image->delete();
+
+        // Force the gallery partial to re-query instead of showing the
+        // now-stale cached relation on this same render.
+        $this->record->unsetRelation('images');
+
+        Notification::make()->title('Photo removed')->success()->send();
+    }
+
     protected function afterSave(): void
     {
-        $existing = $this->record->images()->get()->keyBy('path');
-        $keptPaths = [];
+        $nextSortOrder = ($this->record->images()->max('sort_order') ?? -1) + 1;
 
-        foreach ($this->imagePaths as $sortOrder => $path) {
-            if ($existing->has($path)) {
-                $existing->get($path)->update(['sort_order' => $sortOrder]);
-            } else {
-                ProductImage::create([
-                    'product_id' => $this->record->id,
-                    'path' => $path,
-                    'sort_order' => $sortOrder,
-                ]);
-            }
-
-            $keptPaths[] = $path;
-        }
-
-        // Eloquent Collection::except() filters by primary key, not by
-        // whatever keyBy() was used to re-key the collection - it would
-        // silently never match these path-string keys, so this needs an
-        // explicit filter instead.
-        $removed = $existing->reject(fn ($image, $path) => in_array($path, $keptPaths, true));
-
-        foreach ($removed as $image) {
-            Storage::disk('public')->delete($image->path);
-            $image->delete();
+        foreach ($this->imagePaths as $path) {
+            ProductImage::create([
+                'product_id' => $this->record->id,
+                'path' => $path,
+                'sort_order' => $nextSortOrder++,
+            ]);
         }
 
         $supplier = $this->record->supplierProfile;

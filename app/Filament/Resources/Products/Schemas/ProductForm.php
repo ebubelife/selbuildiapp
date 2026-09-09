@@ -4,12 +4,14 @@ namespace App\Filament\Resources\Products\Schemas;
 
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\Product;
 use App\Models\SupplierProfile;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 
 class ProductForm
@@ -59,13 +61,22 @@ class ProductForm
                     ->label('Specification')
                     ->helperText('Size, grade, material - e.g. "12mm, Grade 60, 12m length".')
                     ->columnSpanFull(),
+                // Existing photos are managed separately below (instant
+                // remove, no FileUpload preview involved) - this field is
+                // only ever for photos being added right now. Pre-filling
+                // a multi-image FileUpload with already-stored paths is
+                // what was causing the preview to spin forever on edit;
+                // keeping it upload-only sidesteps that entirely, and is
+                // also just a clearer interaction: "add photos" here,
+                // "remove photos" in the gallery below.
+                View::make('filament.product-images-manager')
+                    ->viewData(fn (?Product $record) => ['images' => $record?->images ?? collect()])
+                    ->columnSpanFull(),
                 // Not a real column on products - CreateProduct/EditProduct
-                // pull this out of the form data and reconcile it against
-                // the product's images() relation themselves, the same way
-                // the supplier-facing product form already handles
-                // multiple photos.
+                // pull the uploaded paths out of the form data and create
+                // ProductImage rows for them themselves.
                 FileUpload::make('images')
-                    ->label('Product Photos')
+                    ->label('Add Photos')
                     ->multiple()
                     ->image()
                     ->disk('public')

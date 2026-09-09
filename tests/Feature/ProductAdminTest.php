@@ -132,14 +132,9 @@ class ProductAdminTest extends TestCase
         $this->assertSame(40, $product->inventories()->sum('quantity_available'));
     }
 
-    public function test_an_admin_can_add_a_photo_to_an_existing_product(): void
+    public function test_an_admin_can_add_a_photo_to_an_existing_product_without_disturbing_existing_ones(): void
     {
         Storage::fake('public');
-        // FileUpload drops any path from its state that doesn't actually
-        // exist on disk when resolving the field's current value, so the
-        // fake files need to be genuinely "there" for fillForm/assertFormSet
-        // to see them - matching what a real upload would have already done.
-        Storage::disk('public')->put('product-images/old.jpg', 'fake-content');
         Storage::disk('public')->put('product-images/new.jpg', 'fake-content');
 
         $admin = User::factory()->create(['role' => 'admin']);
@@ -158,9 +153,12 @@ class ProductAdminTest extends TestCase
 
         $this->actingAs($admin, 'admin');
 
+        // The "Add Photos" field starts empty on edit (existing photos are
+        // managed separately, see removeExistingImage below) - filling it
+        // just appends, it never needs to already contain old.jpg.
         Livewire::test(EditProduct::class, ['record' => $product->getRouteKey()])
-            ->assertFormSet(['images' => ['product-images/old.jpg']])
-            ->fillForm(['images' => ['product-images/old.jpg', 'product-images/new.jpg']])
+            ->assertFormSet(['images' => []])
+            ->fillForm(['images' => ['product-images/new.jpg']])
             ->call('save')
             ->assertHasNoFormErrors();
 
@@ -169,7 +167,7 @@ class ProductAdminTest extends TestCase
         $this->assertSame(['product-images/old.jpg', 'product-images/new.jpg'], $product->images->pluck('path')->all());
     }
 
-    public function test_an_admin_removing_a_photo_from_the_gallery_deletes_it(): void
+    public function test_an_admin_can_remove_an_existing_photo_immediately(): void
     {
         Storage::fake('public');
         Storage::disk('public')->put('product-images/old.jpg', 'fake-content');
@@ -187,19 +185,60 @@ class ProductAdminTest extends TestCase
             'min_order_qty' => 1,
             'is_active' => true,
         ]);
-        ProductImage::create(['product_id' => $product->id, 'path' => 'product-images/old.jpg', 'sort_order' => 0]);
+        $old = ProductImage::create(['product_id' => $product->id, 'path' => 'product-images/old.jpg', 'sort_order' => 0]);
         ProductImage::create(['product_id' => $product->id, 'path' => 'product-images/keep.jpg', 'sort_order' => 1]);
 
         $this->actingAs($admin, 'admin');
 
+        // Removal is a direct method call (a click on the gallery's Remove
+        // button), not part of the form's Save flow - it takes effect
+        // right away, with no separate save step.
         Livewire::test(EditProduct::class, ['record' => $product->getRouteKey()])
-            ->fillForm(['images' => ['product-images/keep.jpg']])
-            ->call('save')
-            ->assertHasNoFormErrors();
+            ->call('removeExistingImage', $old->id);
 
         $product->refresh();
         $this->assertCount(1, $product->images);
         $this->assertSame('product-images/keep.jpg', $product->images->first()->path);
         Storage::disk('public')->assertMissing('product-images/old.jpg');
+    }
+
+    public function test_an_admin_cannot_remove_another_products_photo(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('product-images/other.jpg', 'fake-content');
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $product = Product::create([
+            'supplier_profile_id' => $this->supplier()->id,
+            'category_id' => $this->category()->id,
+            'name' => 'Roofing Sheet',
+            'slug' => 'roofing-sheet-'.uniqid(),
+            'sku' => 'SB-'.uniqid(),
+            'unit' => 'piece',
+            'price' => 9500,
+            'min_order_qty' => 1,
+            'is_active' => true,
+        ]);
+        $otherProduct = Product::create([
+            'supplier_profile_id' => $this->supplier()->id,
+            'category_id' => $this->category()->id,
+            'name' => 'Other Product',
+            'slug' => 'other-product-'.uniqid(),
+            'sku' => 'SB-'.uniqid(),
+            'unit' => 'piece',
+            'price' => 1000,
+            'min_order_qty' => 1,
+            'is_active' => true,
+        ]);
+        $otherImage = ProductImage::create(['product_id' => $otherProduct->id, 'path' => 'product-images/other.jpg', 'sort_order' => 0]);
+
+        $this->actingAs($admin, 'admin');
+
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+
+        Livewire::test(EditProduct::class, ['record' => $product->getRouteKey()])
+            ->call('removeExistingImage', $otherImage->id);
+
+        $this->assertDatabaseHas('product_images', ['id' => $otherImage->id]);
     }
 }
