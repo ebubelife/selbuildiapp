@@ -14,6 +14,8 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class ProductForm
 {
@@ -31,16 +33,40 @@ class ProductForm
                     ->label('Category')
                     ->options(fn () => Category::pluck('name', 'id'))
                     ->required()
-                    ->searchable(),
+                    ->searchable()
+                    ->createOptionForm([
+                        TextInput::make('name')->required()->maxLength(255),
+                    ])
+                    ->createOptionUsing(fn (array $data): int => Category::create([
+                        'name' => $data['name'],
+                        'slug' => self::uniqueSlug(Category::class, $data['name']),
+                    ])->getKey()),
                 Select::make('brand_id')
                     ->label('Brand')
                     ->options(fn () => Brand::pluck('name', 'id'))
-                    ->searchable(),
+                    ->searchable()
+                    ->createOptionForm([
+                        TextInput::make('name')->required()->maxLength(255),
+                    ])
+                    ->createOptionUsing(fn (array $data): int => Brand::create([
+                        'name' => $data['name'],
+                        'slug' => self::uniqueSlug(Brand::class, $data['name']),
+                    ])->getKey()),
                 Select::make('unit')
                     ->options(fn () => Unit::options())
                     ->required()
                     ->native(false)
-                    ->searchable(),
+                    ->searchable()
+                    ->createOptionForm([
+                        TextInput::make('name')
+                            ->required()
+                            ->maxLength(50)
+                            ->helperText('Lowercase, singular - e.g. "sheet", "cubic meter".'),
+                    ])
+                    ->createOptionUsing(fn (array $data): string => Unit::create([
+                        'name' => Str::lower(trim($data['name'])),
+                        'sort_order' => (Unit::max('sort_order') ?? 0) + 1,
+                    ])->name),
                 TextInput::make('price')->numeric()->required()->suffix('XAF'),
                 TextInput::make('compare_at_price')->numeric()->suffix('XAF'),
                 TextInput::make('min_order_qty')->numeric()->required()->default(1),
@@ -86,5 +112,24 @@ class ProductForm
                 Toggle::make('is_active')->default(true),
                 Toggle::make('is_featured'),
             ]);
+    }
+
+    /**
+     * A URL-safe slug for a quick-created category/brand that won't
+     * collide with an existing one ("cement", then "cement-2", ...).
+     *
+     * @param  class-string<Model>  $model
+     */
+    private static function uniqueSlug(string $model, string $name): string
+    {
+        $base = Str::slug($name) ?: 'item';
+        $slug = $base;
+        $suffix = 1;
+
+        while ($model::where('slug', $slug)->exists()) {
+            $slug = $base.'-'.++$suffix;
+        }
+
+        return $slug;
     }
 }

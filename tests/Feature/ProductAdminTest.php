@@ -10,6 +10,7 @@ use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\SupplierProfile;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -240,5 +241,54 @@ class ProductAdminTest extends TestCase
             ->call('removeExistingImage', $otherImage->id);
 
         $this->assertDatabaseHas('product_images', ['id' => $otherImage->id]);
+    }
+
+    public function test_an_admin_can_quick_create_a_category_from_the_product_form(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->actingAs($admin, 'admin');
+
+        Livewire::test(CreateProduct::class)
+            ->callFormComponentAction('category_id', 'createOption', data: ['name' => 'Plumbing Supplies'])
+            ->assertHasNoFormComponentActionErrors();
+
+        $this->assertDatabaseHas('categories', ['name' => 'Plumbing Supplies', 'slug' => 'plumbing-supplies']);
+    }
+
+    public function test_quick_created_category_slug_avoids_colliding_with_an_existing_one(): void
+    {
+        Category::create(['name' => 'Cement', 'slug' => 'cement']);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->actingAs($admin, 'admin');
+
+        Livewire::test(CreateProduct::class)
+            ->callFormComponentAction('category_id', 'createOption', data: ['name' => 'Cement']);
+
+        $this->assertDatabaseHas('categories', ['slug' => 'cement-2']);
+    }
+
+    public function test_an_admin_can_quick_create_a_brand_from_the_product_form(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->actingAs($admin, 'admin');
+
+        Livewire::test(CreateProduct::class)
+            ->callFormComponentAction('brand_id', 'createOption', data: ['name' => 'Cimencam']);
+
+        $this->assertDatabaseHas('brands', ['name' => 'Cimencam', 'slug' => 'cimencam']);
+    }
+
+    public function test_an_admin_can_quick_create_a_unit_from_the_product_form(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->actingAs($admin, 'admin');
+
+        Livewire::test(CreateProduct::class)
+            ->callFormComponentAction('unit', 'createOption', data: ['name' => 'Sheet']);
+
+        // Lowercased, and sorted after the seeded units.
+        $this->assertDatabaseHas('units', ['name' => 'sheet']);
+        $this->assertSame('sheet', Unit::orderByDesc('sort_order')->first()->name);
     }
 }
