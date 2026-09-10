@@ -165,13 +165,13 @@
                                 </span>
                             @endif
 
-                            {{-- Gold legibility band - keeps the label readable over any photo --}}
-                            <span class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-gold-600 via-gold-600/85 to-transparent"></span>
+                            {{-- Deep-blue legibility band - keeps the label readable over any photo --}}
+                            <span class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-navy-900 via-navy-900/80 to-transparent"></span>
 
                             <span class="absolute inset-x-0 bottom-0 p-4 flex items-center justify-between gap-2">
-                                <span class="font-heading font-bold text-navy-900 text-sm leading-snug">{{ $category->name }}</span>
-                                <span class="shrink-0 w-6 h-6 rounded-full bg-navy-900/90 group-hover:bg-navy-900 flex items-center justify-center transition-colors duration-300">
-                                    <svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
+                                <span class="font-heading font-semibold text-white text-sm leading-snug [text-shadow:0_1px_3px_rgb(6_15_39_/_0.6)]">{{ $category->name }}</span>
+                                <span class="shrink-0 w-6 h-6 rounded-full bg-white/15 group-hover:bg-gold-500 flex items-center justify-center transition-colors duration-300">
+                                    <svg class="w-3 h-3 text-white group-hover:text-navy-900 transition-colors duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
                                 </span>
                             </span>
                         </a>
