@@ -6,6 +6,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\SupplierProfile;
+use App\Models\Unit;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -36,11 +37,10 @@ class ProductForm
                     ->options(fn () => Brand::pluck('name', 'id'))
                     ->searchable(),
                 Select::make('unit')
-                    ->options(array_combine(
-                        ['bag', 'ton', 'piece', 'meter', 'liter', 'roll'],
-                        ['Bag', 'Ton', 'Piece', 'Meter', 'Liter', 'Roll'],
-                    ))
-                    ->required(),
+                    ->options(fn () => Unit::options())
+                    ->required()
+                    ->native(false)
+                    ->searchable(),
                 TextInput::make('price')->numeric()->required()->suffix('XAF'),
                 TextInput::make('compare_at_price')->numeric()->suffix('XAF'),
                 TextInput::make('min_order_qty')->numeric()->required()->default(1),

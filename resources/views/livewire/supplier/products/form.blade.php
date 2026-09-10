@@ -5,6 +5,7 @@ use App\Models\Category;
 use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Models\Unit;
 use App\Models\Warehouse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -73,7 +74,7 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
             'brand_id' => ['nullable', 'exists:brands,id'],
             'description' => ['nullable', 'string'],
             'specification' => ['nullable', 'string', 'max:2000'],
-            'unit' => ['required', 'in:bag,ton,piece,meter,liter,roll'],
+            'unit' => ['required', 'exists:units,name'],
             'price' => ['required', 'integer', 'min:1'],
             'compare_at_price' => ['nullable', 'integer', 'min:1'],
             'min_order_qty' => ['required', 'integer', 'min:1'],
@@ -137,6 +138,7 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
         return [
             'categories' => Category::orderBy('name')->get(),
             'brands' => Brand::orderBy('name')->get(),
+            'units' => Unit::orderBy('sort_order')->orderBy('name')->get(),
         ];
     }
 }; ?>
@@ -174,8 +176,8 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                     <div>
                         <x-input-label for="unit" value="Unit" />
                         <select wire:model="unit" id="unit" class="mt-1 block w-full rounded-lg border-navy-200 focus:border-gold-500 focus:ring-gold-500 text-sm">
-                            @foreach (['bag', 'ton', 'piece', 'meter', 'liter', 'roll'] as $u)
-                                <option value="{{ $u }}">{{ ucfirst($u) }}</option>
+                            @foreach ($units as $u)
+                                <option value="{{ $u->name }}">{{ $u->label() }}</option>
                             @endforeach
                         </select>
                         <x-input-error :messages="$errors->get('unit')" class="mt-1" />
