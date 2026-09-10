@@ -159,18 +159,19 @@
                                     alt="{{ $category->name }}"
                                     class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
                                 >
-                                <span class="absolute inset-0 bg-gradient-to-t from-navy-950/85 via-navy-950/10 to-transparent"></span>
                             @else
                                 <span class="absolute inset-0 bg-gradient-to-br from-navy-800 to-navy-900 flex items-center justify-center">
-                                    <x-icon :name="$category->icon ?? 'cart'" class="w-10 h-10 text-white/30 group-hover:scale-110 group-hover:text-gold-500/60 transition-all duration-500" />
+                                    <x-icon :name="$category->icon ?? 'cart'" class="w-10 h-10 text-white/25 group-hover:scale-110 transition-transform duration-500" />
                                 </span>
-                                <span class="absolute inset-0 bg-gradient-to-t from-navy-950/90 via-navy-950/20 to-transparent"></span>
                             @endif
 
+                            {{-- Gold legibility band - keeps the label readable over any photo --}}
+                            <span class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-gold-600 via-gold-600/85 to-transparent"></span>
+
                             <span class="absolute inset-x-0 bottom-0 p-4 flex items-center justify-between gap-2">
-                                <span class="font-heading font-semibold text-white text-sm leading-snug drop-shadow-sm">{{ $category->name }}</span>
-                                <span class="shrink-0 w-6 h-6 rounded-full bg-white/15 group-hover:bg-gold-500 flex items-center justify-center transition-colors duration-300">
-                                    <svg class="w-3 h-3 text-white group-hover:text-navy-900 transition-colors duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
+                                <span class="font-heading font-bold text-navy-900 text-sm leading-snug">{{ $category->name }}</span>
+                                <span class="shrink-0 w-6 h-6 rounded-full bg-navy-900/90 group-hover:bg-navy-900 flex items-center justify-center transition-colors duration-300">
+                                    <svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
                                 </span>
                             </span>
                         </a>
