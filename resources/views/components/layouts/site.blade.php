@@ -17,6 +17,8 @@
 
         @include('partials.site-footer')
 
+        <x-whatsapp-fab />
+
         @livewireScripts
     </body>
 </html>
