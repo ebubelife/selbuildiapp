@@ -245,6 +245,22 @@ class RegistrationTest extends TestCase
         ]);
     }
 
+    public function test_the_role_query_parameter_preselects_a_tab(): void
+    {
+        // Full HTTP visit (not Volt::test(), which doesn't route mount()
+        // through a real query string) confirms mount() actually reads
+        // ?role= - this is what the homepage's "Become a Delivery Agent"
+        // button and the nav's "Delivery" link both rely on.
+        $this->get(route('register', ['role' => 'delivery_agent']))
+            ->assertOk()
+            ->assertSeeVolt('pages.auth.register');
+    }
+
+    public function test_an_invalid_role_query_parameter_does_not_error(): void
+    {
+        $this->get(route('register', ['role' => 'admin']))->assertOk();
+    }
+
     public function test_delivery_agent_registration_requires_a_profile_photo(): void
     {
         $component = Volt::test('pages.auth.register')

@@ -4,7 +4,15 @@
 >
 
     {{-- Hero --}}
-    <section class="relative overflow-hidden bg-gradient-to-br from-navy-900 via-navy-800 to-navy-700 pt-32 pb-24 lg:pt-44 lg:pb-32">
+    <section
+        class="relative overflow-hidden bg-navy-900 bg-cover bg-center pt-32 pb-24 lg:pt-44 lg:pb-32"
+        style="background-image: url('{{ asset('images/hero-bg.jpg') }}');"
+    >
+        {{-- Darkens/tints the photo so white text stays readable - see the
+             Gemini prompt in the manual notes for what image belongs at
+             images/hero-bg.jpg. Falls back to a plain navy background if
+             the file isn't there yet. --}}
+        <div class="absolute inset-0 bg-gradient-to-br from-navy-900/95 via-navy-800/90 to-navy-700/85"></div>
         <div class="absolute inset-0 opacity-[0.06]" style="background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0); background-size: 32px 32px;"></div>
         <div class="absolute -top-32 -right-32 w-[32rem] h-[32rem] rounded-full bg-gold-500/20 blur-3xl"></div>
         <div class="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-navy-500/30 blur-3xl"></div>
@@ -399,6 +407,45 @@
                     <p class="mt-2 text-sm text-navy-500 leading-relaxed">{{ $point['text'] }}</p>
                 </x-reveal>
             @endforeach
+        </div>
+    </section>
+
+    {{-- Delivery Agents CTA --}}
+    <section
+        id="delivery"
+        class="relative overflow-hidden py-24 bg-navy-900 bg-cover bg-center"
+        style="background-image: url('{{ asset('images/delivery-hero.jpg') }}');"
+    >
+        {{-- See the Gemini prompt in the manual notes for what image
+             belongs at images/delivery-hero.jpg. Falls back to plain navy
+             if it isn't there yet. --}}
+        <div class="absolute inset-0 bg-gradient-to-t from-navy-950/95 via-navy-900/85 to-navy-900/50"></div>
+
+        <div class="relative max-w-3xl mx-auto px-6 lg:px-8 text-center">
+            <span class="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-1.5 text-sm font-medium text-gold-300">
+                <x-icon name="truck" class="w-4 h-4" />
+                Drive for Selbuildi
+            </span>
+
+            <h2 class="mt-6 font-heading text-3xl sm:text-4xl font-bold text-white">Deliver for Selbuildi, on your own schedule</h2>
+
+            <p class="mt-4 text-navy-100 leading-relaxed max-w-2xl mx-auto">
+                Sign up as a delivery agent, get approved, and start getting matched to orders near you. Update every delivery straight from your phone &mdash; photo proof included.
+            </p>
+
+            <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="{{ route('register', ['role' => 'delivery_agent']) }}" wire:navigate>
+                    <x-primary-button class="w-full sm:w-auto px-8 py-3.5 text-base">
+                        Become a Delivery Agent
+                        <x-icon name="arrow-right" class="w-4 h-4" />
+                    </x-primary-button>
+                </a>
+                <a href="{{ route('login') }}" wire:navigate>
+                    <button type="button" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg font-heading font-semibold text-base text-white border-2 border-white/30 hover:bg-white/10 transition-colors duration-150">
+                        Already an Agent? Log In
+                    </button>
+                </a>
+            </div>
         </div>
     </section>
 

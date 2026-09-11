@@ -82,4 +82,12 @@ class HomepageTest extends TestCase
             ->assertSee('Net-20 credit terms')
             ->assertDontSee('Net-15 credit terms');
     }
+
+    public function test_the_homepage_has_a_delivery_agent_recruitment_section(): void
+    {
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('Become a Delivery Agent')
+            ->assertSee(route('register', ['role' => 'delivery_agent']), escape: false);
+    }
 }

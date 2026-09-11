@@ -61,6 +61,21 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
     public string $vehicle_id = '';
 
     /**
+     * Lets a link like /register?role=delivery_agent open straight onto
+     * that tab - used by the homepage's "Become a Delivery Agent" button
+     * and the nav's "Delivery" link, instead of everyone always landing
+     * on Customer and having to know to switch tabs.
+     */
+    public function mount(): void
+    {
+        $requested = request()->query('role');
+
+        if (in_array($requested, ['customer', 'contractor', 'supplier', 'delivery_agent'], true)) {
+            $this->role = $requested;
+        }
+    }
+
+    /**
      * Handle an incoming registration request.
      */
     public function register(): void

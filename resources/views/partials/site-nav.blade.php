@@ -20,6 +20,7 @@
                 <a href="#how-it-works" :class="scrolled ? 'text-navy-700 hover:text-gold-600' : 'text-white/90 hover:text-white'" class="text-sm font-medium transition-colors">How it Works</a>
                 <a href="#trust-credit" :class="scrolled ? 'text-navy-700 hover:text-gold-600' : 'text-white/90 hover:text-white'" class="text-sm font-medium transition-colors">Credit &amp; Trust</a>
                 <a href="#suppliers" :class="scrolled ? 'text-navy-700 hover:text-gold-600' : 'text-white/90 hover:text-white'" class="text-sm font-medium transition-colors">Suppliers</a>
+                <a href="#delivery" :class="scrolled ? 'text-navy-700 hover:text-gold-600' : 'text-white/90 hover:text-white'" class="text-sm font-medium transition-colors">Delivery</a>
             </div>
 
             <div class="hidden lg:flex items-center gap-3">
@@ -72,6 +73,7 @@
             <a href="#how-it-works" @click="mobileOpen = false" class="block text-navy-700 font-medium">How it Works</a>
             <a href="#trust-credit" @click="mobileOpen = false" class="block text-navy-700 font-medium">Credit &amp; Trust</a>
             <a href="#suppliers" @click="mobileOpen = false" class="block text-navy-700 font-medium">Suppliers</a>
+            <a href="#delivery" @click="mobileOpen = false" class="block text-navy-700 font-medium">Delivery</a>
             <div class="pt-4 border-t border-navy-100 flex flex-col gap-3">
                 @auth
                     <a href="{{ route('dashboard') }}" wire:navigate><x-primary-button class="w-full">Dashboard</x-primary-button></a>
