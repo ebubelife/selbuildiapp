@@ -57,8 +57,9 @@
                     </div>
                 </div>
             @else
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
                     @foreach ([
+                        ['route' => 'checkout.index', 'icon' => 'cart', 'label' => 'View Cart'],
                         ['route' => 'orders.index', 'icon' => 'truck', 'label' => 'Order History'],
                         ['route' => 'addresses.index', 'icon' => 'map-pin', 'label' => 'My Addresses'],
                         ['route' => 'credit.index', 'icon' => 'star', 'label' => 'Trust &amp; Credit'],
@@ -228,8 +229,16 @@
                             <div class="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
                                 @foreach ($suggestedProducts as $product)
                                     <a href="{{ route('shop.show', $product) }}" wire:navigate class="group block rounded-xl border border-navy-100 overflow-hidden hover:border-gold-300 hover:shadow-brand transition-all duration-200">
-                                        <div class="aspect-square bg-navy-50 flex items-center justify-center">
-                                            <x-icon :name="$product->category->icon ?? 'cart'" class="w-10 h-10 text-navy-300 group-hover:text-gold-500 transition-colors duration-200" stroke-width="1.2" />
+                                        <div class="aspect-square bg-navy-50 flex items-center justify-center overflow-hidden">
+                                            @if ($product->images->isNotEmpty())
+                                                <img
+                                                    src="{{ asset('storage/'.$product->images->first()->path) }}"
+                                                    alt="{{ $product->name }}"
+                                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                                >
+                                            @else
+                                                <x-icon :name="$product->category->icon ?? 'cart'" class="w-10 h-10 text-navy-300 group-hover:text-gold-500 transition-colors duration-200" stroke-width="1.2" />
+                                            @endif
                                         </div>
                                         <div class="p-3">
                                             <p class="font-semibold text-navy-900 text-xs truncate">{{ $product->name }}</p>

@@ -113,7 +113,7 @@ Route::get('dashboard', function () {
         'suggestedProducts' => $user->isSupplier()
             ? collect()
             : Product::where('is_active', true)
-                ->with('category')
+                ->with(['category', 'images'])
                 ->inRandomOrder()
                 ->limit(4)
                 ->get(),
