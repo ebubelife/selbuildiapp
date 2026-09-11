@@ -4,6 +4,7 @@ namespace App\Filament\Resources\SupportTickets;
 
 use App\Filament\Concerns\HasDateRangeFilter;
 use App\Filament\Resources\SupportTickets\Pages\ManageSupportTickets;
+use App\Filament\Resources\Users\UserResource;
 use App\Models\SupportTicket;
 use App\Models\User;
 use App\Notifications\SupportTicketReplied;
@@ -65,7 +66,17 @@ class SupportTicketResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('user.name')->label('From')->searchable(),
+                TextColumn::make('user.name')
+                    ->label('From')
+                    ->searchable()
+                    ->url(fn (SupportTicket $record) => static::userProfileUrl($record))
+                    ->openUrlInNewTab()
+                    ->color('primary')
+                    ->weight('semibold'),
+                TextColumn::make('user.email')
+                    ->label('Email')
+                    ->searchable()
+                    ->copyable(),
                 BadgeColumn::make('user.role')
                     ->label('Account')
                     ->formatStateUsing(fn (?string $state) => $state ? ucfirst($state) : '—')
@@ -123,9 +134,14 @@ class SupportTicketResource extends Resource
                     ->schema([
                         Section::make('Message')
                             ->schema([
-                                TextEntry::make('user.name')->label('From'),
+                                TextEntry::make('user.name')
+                                    ->label('From')
+                                    ->url(fn (SupportTicket $record) => static::userProfileUrl($record))
+                                    ->openUrlInNewTab()
+                                    ->color('primary')
+                                    ->weight('semibold'),
                                 TextEntry::make('user.role')->label('Account type')->formatStateUsing(fn (?string $state) => $state ? ucfirst($state) : '—')->badge(),
-                                TextEntry::make('user.email')->label('Email'),
+                                TextEntry::make('user.email')->label('Email')->copyable(),
                                 TextEntry::make('product.name')->label('Product')->visible(fn (SupportTicket $record) => $record->product_id !== null),
                                 TextEntry::make('subject'),
                                 TextEntry::make('body')->label('Message')->columnSpanFull(),
@@ -202,5 +218,16 @@ class SupportTicketResource extends Resource
         return [
             'index' => ManageSupportTickets::route('/'),
         ];
+    }
+
+    /**
+     * UserResource has no dedicated per-record page (it's a single list
+     * page with modal-based actions), so "view profile" means: open that
+     * list pre-searched down to just this one person - their full record,
+     * including the Edit action, is right there.
+     */
+    private static function userProfileUrl(SupportTicket $record): string
+    {
+        return UserResource::getUrl('index').'?tableSearch='.urlencode($record->user->email);
     }
 }

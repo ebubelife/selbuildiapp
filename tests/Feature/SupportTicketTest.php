@@ -242,4 +242,25 @@ class SupportTicketTest extends TestCase
             ->assertSee('From supplier')
             ->assertDontSee('From customer');
     }
+
+    public function test_the_admin_ticket_list_shows_the_senders_email_and_links_to_their_profile(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $customer = User::factory()->create(['role' => 'customer', 'name' => 'Jane Buyer', 'email' => 'jane@example.com']);
+        $ticket = SupportTicket::create(['user_id' => $customer->id, 'type' => 'general', 'subject' => 'Question', 'body' => 'Body.']);
+
+        $this->actingAs($admin, 'admin');
+
+        $expectedUrl = \App\Filament\Resources\Users\UserResource::getUrl('index').'?tableSearch=jane%40example.com';
+
+        Livewire::test(ManageSupportTickets::class)
+            ->assertSee('jane@example.com')
+            ->assertSee($expectedUrl, escape: false);
+
+        // The link itself actually filters the Users list down to just
+        // that person, not just decoration.
+        Livewire::test(\App\Filament\Resources\Users\Pages\ManageUsers::class)
+            ->set('tableSearch', 'jane@example.com')
+            ->assertSee('Jane Buyer');
+    }
 }
