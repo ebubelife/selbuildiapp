@@ -10,10 +10,13 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\HtmlString;
 use UnitEnum;
@@ -43,6 +46,10 @@ class CountryResource extends Resource
                     ->formatStateUsing(fn (?string $state) => $state ? strtoupper($state) : $state)
                     ->dehydrateStateUsing(fn (string $state) => strtoupper($state))
                     ->unique(ignoreRecord: true),
+                Toggle::make('checkout_enabled')
+                    ->label('Available for checkout')
+                    ->helperText('Lets a customer pick this country as a delivery address at checkout. Off by default - Selbuildi doesn\'t ship building materials everywhere.')
+                    ->default(false),
             ]);
     }
 
@@ -52,8 +59,15 @@ class CountryResource extends Resource
             ->columns([
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('code')->label('ISO Code')->badge(),
+                IconColumn::make('checkout_enabled')->label('Checkout')->boolean()->sortable(),
             ])
             ->defaultSort('name')
+            ->filters([
+                TernaryFilter::make('checkout_enabled')
+                    ->label('Checkout availability')
+                    ->trueLabel('Available for checkout')
+                    ->falseLabel('Not available'),
+            ])
             ->recordActions([
                 EditAction::make(),
                 DeleteAction::make(),

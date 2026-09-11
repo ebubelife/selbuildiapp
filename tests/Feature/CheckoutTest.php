@@ -119,6 +119,29 @@ class CheckoutTest extends TestCase
         ]);
     }
 
+    public function test_a_country_not_enabled_for_checkout_is_rejected(): void
+    {
+        $this->customerWithCartItem();
+
+        Volt::test('checkout.index')
+            ->set('recipient_name', 'Test Customer')
+            ->set('phone', '+237600000000')
+            ->set('country', 'Nigeria') // not checkout-enabled (only Cameroon is, by default)
+            ->set('city', 'Lagos')
+            ->set('street', '1 Main Street')
+            ->call('saveNewAddress')
+            ->assertHasErrors('country');
+    }
+
+    public function test_the_delivery_address_step_clarifies_where_the_order_ships_to(): void
+    {
+        $this->customerWithCartItem();
+
+        Volt::test('checkout.index')
+            ->set('step', 'address')
+            ->assertSee('This is where your order will be delivered');
+    }
+
     public function test_place_order_requires_a_selected_address(): void
     {
         $this->customerWithCartItem();

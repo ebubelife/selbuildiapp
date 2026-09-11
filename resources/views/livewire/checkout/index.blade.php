@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Address;
+use App\Models\Country;
 use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -32,7 +34,7 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
 
     public string $recipient_name = '';
     public string $phone = '';
-    public string $country = 'Cameroon';
+    public string $country = '';
     public string $region = '';
     public string $city = '';
     public string $street = '';
@@ -56,6 +58,8 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
         } else {
             $this->showNewAddressForm = true;
         }
+
+        $this->country = array_key_first(Country::checkoutOptions()) ?? '';
     }
 
     public function goToStep(string $step): void
@@ -74,7 +78,7 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
         $validated = $this->validate([
             'recipient_name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:30'],
-            'country' => ['required', 'string', 'max:255'],
+            'country' => ['required', Rule::in(array_keys(Country::checkoutOptions()))],
             'region' => ['nullable', 'string', 'max:255'],
             'city' => ['required', 'string', 'max:255'],
             'street' => ['required', 'string', 'max:255'],
@@ -89,7 +93,7 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
         $this->selectedAddressId = $address->id;
         $this->showNewAddressForm = false;
         $this->reset(['recipient_name', 'phone', 'region', 'city', 'street', 'landmark']);
-        $this->country = 'Cameroon';
+        $this->country = array_key_first(Country::checkoutOptions()) ?? '';
     }
 
     public function placeOrder(CreditService $creditService, PaymentGatewayManager $gateways): void
@@ -253,10 +257,20 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
 
         $creditAccount = Auth::user()->creditAccount;
 
+        $countries = Country::checkoutOptions();
+
+        // An existing address's country may have since been disabled for
+        // checkout by an admin - still show it as a selectable option
+        // while editing so the form doesn't silently change what's saved.
+        if ($this->country && ! isset($countries[$this->country])) {
+            $countries = [$this->country => $this->country] + $countries;
+        }
+
         return [
             'cart' => $cart,
             'itemsBySupplier' => $cart->itemsBySupplier(),
             'addresses' => Auth::user()->addresses,
+            'countries' => $countries,
             'projects' => Auth::user()->isContractor() ? Auth::user()->projects()->where('status', 'active')->get() : collect(),
             'creditAccount' => $creditAccount,
             'creditUsableForOrder' => $creditAccount?->isApproved() && $creditAccount->available_credit >= $cart->subtotal(),
@@ -351,6 +365,7 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                     @elseif ($step === 'address')
                         <div class="bg-white rounded-2xl border border-navy-100 p-6">
                             <h2 class="font-heading font-bold text-lg text-navy-900">Delivery address</h2>
+                            <p class="text-sm text-navy-500 mt-1">This is where your order will be delivered — not a billing address.</p>
 
                             @if ($addresses->isNotEmpty() && ! $showNewAddressForm)
                                 <div class="mt-4 space-y-3" role="radiogroup" aria-label="Delivery address">
@@ -393,7 +408,12 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                                     <div class="grid sm:grid-cols-2 gap-4">
                                         <div>
                                             <x-input-label for="country" value="Country" />
-                                            <x-text-input wire:model="country" id="country" class="block mt-1 w-full" />
+                                            <select wire:model="country" id="country" class="mt-1 block w-full rounded-lg border-navy-200 focus:border-gold-500 focus:ring-gold-500 text-sm">
+                                                <option value="">Select a country</option>
+                                                @foreach ($countries as $value => $label)
+                                                    <option value="{{ $value }}">{{ $label }}</option>
+                                                @endforeach
+                                            </select>
                                             <x-input-error :messages="$errors->get('country')" class="mt-1" />
                                         </div>
                                         <div>

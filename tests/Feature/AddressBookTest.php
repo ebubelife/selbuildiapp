@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Country;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,6 +16,61 @@ class AddressBookTest extends TestCase
     public function test_a_guest_is_redirected_away_from_the_address_book(): void
     {
         $this->get(route('addresses.index'))->assertRedirect(route('login'));
+    }
+
+    public function test_a_country_not_enabled_for_checkout_is_rejected(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $this->actingAs($user);
+
+        Volt::test('addresses.index')
+            ->set('recipient_name', 'Test Customer')
+            ->set('phone', '+237600000000')
+            ->set('country', 'Nigeria') // not checkout-enabled (only Cameroon is, by default)
+            ->set('city', 'Lagos')
+            ->set('street', '1 Main Street')
+            ->call('save')
+            ->assertHasErrors('country');
+    }
+
+    public function test_a_newly_enabled_country_can_be_selected(): void
+    {
+        Country::create(['name' => 'Nigeria', 'code' => 'NG', 'checkout_enabled' => true]);
+
+        $user = User::factory()->create(['role' => 'customer']);
+        $this->actingAs($user);
+
+        Volt::test('addresses.index')
+            ->set('recipient_name', 'Test Customer')
+            ->set('phone', '+237600000000')
+            ->set('country', 'Nigeria')
+            ->set('city', 'Lagos')
+            ->set('street', '1 Main Street')
+            ->call('save')
+            ->assertHasNoErrors('country');
+
+        $this->assertDatabaseHas('addresses', ['country' => 'Nigeria', 'city' => 'Lagos']);
+    }
+
+    public function test_editing_an_address_whose_country_was_since_disabled_still_shows_it(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $address = $user->addresses()->create([
+            'recipient_name' => 'Test Customer',
+            'phone' => '+237600000000',
+            'country' => 'Ghana',
+            'city' => 'Accra',
+            'street' => '1 Main Street',
+            'is_default' => true,
+        ]);
+        $this->actingAs($user);
+
+        // Ghana was never checkout_enabled, but this address already has
+        // it - editing must not silently swap it out for something else.
+        Volt::test('addresses.index')
+            ->call('edit', $address->id)
+            ->assertSet('country', 'Ghana')
+            ->assertSee('Ghana');
     }
 
     public function test_adding_the_first_address_makes_it_the_default_automatically(): void

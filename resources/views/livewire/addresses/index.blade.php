@@ -1,7 +1,9 @@
 <?php
 
 use App\Models\Address;
+use App\Models\Country;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -14,7 +16,7 @@ new #[Layout('layouts.app')] class extends Component
     public string $label = '';
     public string $recipient_name = '';
     public string $phone = '';
-    public string $country = 'Cameroon';
+    public string $country = '';
     public string $region = '';
     public string $city = '';
     public string $street = '';
@@ -50,7 +52,7 @@ new #[Layout('layouts.app')] class extends Component
             'label' => ['nullable', 'string', 'max:255'],
             'recipient_name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:30'],
-            'country' => ['required', 'string', 'max:255'],
+            'country' => ['required', Rule::in(array_keys(Country::checkoutOptions()))],
             'region' => ['nullable', 'string', 'max:255'],
             'city' => ['required', 'string', 'max:255'],
             'street' => ['required', 'string', 'max:255'],
@@ -104,14 +106,24 @@ new #[Layout('layouts.app')] class extends Component
     private function resetForm(): void
     {
         $this->reset(['editingId', 'label', 'recipient_name', 'phone', 'region', 'city', 'street', 'landmark', 'is_default']);
-        $this->country = 'Cameroon';
+        $this->country = array_key_first(Country::checkoutOptions()) ?? '';
         $this->resetErrorBag();
     }
 
     public function with(): array
     {
+        $countries = Country::checkoutOptions();
+
+        // An existing address's country may have since been disabled for
+        // checkout by an admin - still show it as a selectable option
+        // while editing so the form doesn't silently change what's saved.
+        if ($this->country && ! isset($countries[$this->country])) {
+            $countries = [$this->country => $this->country] + $countries;
+        }
+
         return [
             'addresses' => Auth::user()->addresses()->orderByDesc('is_default')->latest()->get(),
+            'countries' => $countries,
         ];
     }
 }; ?>
@@ -157,7 +169,13 @@ new #[Layout('layouts.app')] class extends Component
                             </div>
                             <div>
                                 <x-input-label for="country" value="Country" />
-                                <x-text-input wire:model="country" id="country" class="block mt-1 w-full" />
+                                <select wire:model="country" id="country" class="mt-1 block w-full rounded-lg border-navy-200 focus:border-gold-500 focus:ring-gold-500 text-sm">
+                                    <option value="">Select a country</option>
+                                    @foreach ($countries as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <p class="mt-1 text-xs text-navy-400">We currently only deliver to the countries listed here.</p>
                                 <x-input-error :messages="$errors->get('country')" class="mt-1" />
                             </div>
                         </div>
