@@ -23,6 +23,21 @@ use UnitEnum;
 
 class PaymentGatewayResource extends Resource
 {
+    /**
+     * Selbuildi transacts entirely in XAF today - this exists so it's
+     * impossible to enable a provider that can't actually process that
+     * without seeing why, right on the list. Paystack (Nigeria/Ghana/
+     * South Africa/Kenya-focused) doesn't support XAF at all; it was
+     * built alongside the others as a currency-agnostic integration for
+     * whenever multi-currency pricing exists, not because it works for
+     * Cameroon orders today.
+     */
+    private const SUPPORTED_CURRENCIES = [
+        'flutterwave' => 'XAF, NGN, GHS, KES, USD, and more',
+        'paystack' => 'NGN, GHS, ZAR, KES, USD - no XAF',
+        'fapshi' => 'XAF only',
+    ];
+
     protected static ?string $model = PaymentGateway::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;
@@ -62,6 +77,10 @@ class PaymentGatewayResource extends Resource
             $provider = $schema->getRecord()?->provider;
 
             return [
+                Placeholder::make('currency_warning')
+                    ->label('')
+                    ->visible($provider === 'paystack')
+                    ->content("⚠️ Paystack does not support XAF. Selbuildi's orders are all in XAF, so enabling this will not let anyone actually pay - every transaction will fail with an error from Paystack. Use Flutterwave or Fapshi instead."),
                 Placeholder::make('webhook_url')
                     ->label('Webhook URL')
                     ->content($provider ? route('payments.webhook', ['provider' => $provider]) : '—')
@@ -102,6 +121,10 @@ class PaymentGatewayResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('display_name')->label('Provider')->sortable(),
+                TextColumn::make('provider')
+                    ->label('Supported currencies')
+                    ->formatStateUsing(fn (string $state) => self::SUPPORTED_CURRENCIES[$state] ?? '—')
+                    ->color(fn (PaymentGateway $record) => $record->provider === 'paystack' ? 'danger' : null),
                 IconColumn::make('is_enabled')->label('Enabled')->boolean(),
                 BadgeColumn::make('mode')
                     ->colors([

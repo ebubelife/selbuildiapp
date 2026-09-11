@@ -96,4 +96,17 @@ class PaymentGatewayTest extends TestCase
         $this->assertSame('user-123', $gateway->credential('api_user'));
         $this->assertSame('key-456', $gateway->credential('api_key'));
     }
+
+    public function test_the_list_flags_that_paystack_does_not_support_xaf(): void
+    {
+        $this->seed(PaymentGatewaySeeder::class);
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin, 'admin');
+
+        Livewire::test(ManagePaymentGateways::class)
+            ->assertSee('no XAF')
+            ->assertSee('XAF, NGN, GHS, KES, USD, and more')
+            ->assertSee('XAF only');
+    }
 }
