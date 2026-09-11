@@ -34,14 +34,24 @@ new #[Layout('layouts.guest')] class extends Component
 }; ?>
 
 <div x-data="{ tab: 'customer' }">
-    <h1 class="font-heading text-2xl font-bold text-navy-900" x-text="tab === 'supplier' ? 'Supplier login' : 'Welcome back'"></h1>
-    <p class="mt-1 text-sm text-navy-500" x-text="tab === 'supplier' ? 'Log in to manage your listings and orders.' : 'Log in to track orders and manage your account.'"></p>
+    <h1 class="font-heading text-2xl font-bold text-navy-900" x-text="{
+        supplier: 'Supplier login',
+        delivery_agent: 'Delivery agent login',
+    }[tab] ?? 'Welcome back'"></h1>
+    <p class="mt-1 text-sm text-navy-500" x-text="{
+        supplier: 'Log in to manage your listings and orders.',
+        delivery_agent: 'Log in to see and update your assigned deliveries.',
+    }[tab] ?? 'Log in to track orders and manage your account.'"></p>
 
     <!-- Account type tabs (cosmetic - same login form either way) -->
-    <div class="mt-6 relative grid grid-cols-2 gap-1 rounded-xl bg-navy-50 p-1">
+    <div class="mt-6 relative grid grid-cols-3 gap-1 rounded-xl bg-navy-50 p-1">
         <div
-            class="absolute inset-y-1 w-[calc(50%-0.125rem)] rounded-lg bg-white shadow-sm transition-transform duration-300 ease-out"
-            :class="tab === 'supplier' ? 'translate-x-[calc(100%+0.25rem)]' : 'translate-x-0'"
+            class="absolute inset-y-1 w-[calc(33.333%-0.167rem)] rounded-lg bg-white shadow-sm transition-transform duration-300 ease-out"
+            :class="{
+                'translate-x-0': tab === 'customer',
+                'translate-x-[calc(100%+0.25rem)]': tab === 'supplier',
+                'translate-x-[calc(200%+0.5rem)]': tab === 'delivery_agent',
+            }"
         ></div>
 
         <button
@@ -61,6 +71,15 @@ new #[Layout('layouts.guest')] class extends Component
         >
             <x-icon name="shield" class="w-4 h-4" />
             Supplier
+        </button>
+        <button
+            type="button"
+            @click="tab = 'delivery_agent'"
+            class="relative z-10 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors duration-200"
+            :class="tab === 'delivery_agent' ? 'text-navy-900' : 'text-navy-400 hover:text-navy-600'"
+        >
+            <x-icon name="truck" class="w-4 h-4" />
+            Delivery
         </button>
     </div>
 
