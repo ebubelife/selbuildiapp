@@ -226,9 +226,9 @@ new #[Layout('components.layouts.site')] class extends Component
                     </a>
 
                     <div class="mt-6 flex items-baseline gap-3">
-                        <span class="font-heading text-3xl font-bold text-navy-900">{{ number_format($product->price) }} <span class="text-base font-normal text-navy-400">XAF</span></span>
+                        <x-price :xaf="$product->price" :show-xaf-hint="true" class="font-heading text-3xl font-bold text-navy-900" />
                         @if ($product->compare_at_price)
-                            <span class="text-navy-400 line-through text-sm">{{ number_format($product->compare_at_price) }} XAF</span>
+                            <span class="text-navy-400 line-through text-sm"><x-price :xaf="$product->compare_at_price" /></span>
                         @endif
                         <span class="text-sm text-navy-500">per {{ $product->unit }}</span>
                     </div>
@@ -322,7 +322,7 @@ new #[Layout('components.layouts.site')] class extends Component
                             </div>
                             <div class="p-4">
                                 <h3 class="font-semibold text-navy-900 text-sm leading-snug">{{ $item->name }}</h3>
-                                <span class="mt-2 block font-heading font-bold text-navy-900 text-sm">{{ number_format($item->price) }} XAF</span>
+                                <x-price :xaf="$item->price" class="mt-2 block font-heading font-bold text-navy-900 text-sm" />
                             </div>
                         </a>
                     @endforeach

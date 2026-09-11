@@ -20,6 +20,25 @@ class PaymentGatewayManager
     ];
 
     /**
+     * The single source of truth for which currency each provider can
+     * actually process - both PaymentGatewayResource's admin warning
+     * label and checkout's payment-method filtering read from this, so
+     * they can't drift apart from each other.
+     *
+     * @var array<string, array<int, string>>
+     */
+    public const SUPPORTED_CURRENCIES = [
+        'flutterwave' => ['XAF', 'NGN', 'GHS', 'KES', 'USD', 'EUR', 'GBP', 'ZAR'],
+        'paystack' => ['NGN', 'GHS', 'ZAR', 'KES', 'USD'],
+        'fapshi' => ['XAF'],
+    ];
+
+    public function supportsCurrency(string $provider, string $currency): bool
+    {
+        return in_array($currency, self::SUPPORTED_CURRENCIES[$provider] ?? [], true);
+    }
+
+    /**
      * @return Collection<int, PaymentGateway>
      */
     public function enabled(): Collection

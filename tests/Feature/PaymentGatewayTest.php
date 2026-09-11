@@ -106,7 +106,7 @@ class PaymentGatewayTest extends TestCase
 
         Livewire::test(ManagePaymentGateways::class)
             ->assertSee('no XAF')
-            ->assertSee('XAF, NGN, GHS, KES, USD, and more')
-            ->assertSee('XAF only');
+            ->assertSee('XAF, NGN, GHS, KES, USD, EUR, GBP, ZAR')
+            ->assertSee('NGN, GHS, ZAR, KES, USD');
     }
 }

@@ -11,6 +11,7 @@ use App\Models\Shipment;
 use App\Notifications\OrderPlaced;
 use App\Services\CartService;
 use App\Services\CreditService;
+use App\Services\CurrencyContext;
 use App\Services\Payments\PaymentGatewayManager;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -96,7 +97,7 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
         $this->country = array_key_first(Country::checkoutOptions()) ?? '';
     }
 
-    public function placeOrder(CreditService $creditService, PaymentGatewayManager $gateways): void
+    public function placeOrder(CreditService $creditService, PaymentGatewayManager $gateways, CurrencyContext $currencyContext): void
     {
         $this->validate([
             'selectedAddressId' => ['required', 'exists:addresses,id'],
@@ -111,18 +112,34 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
         }
 
         $subtotal = $cart->subtotal();
+        $currency = $currencyContext->current();
 
         $creditAccount = Auth::user()->creditAccount;
-        $useCredit = $this->paymentMethod === 'selbuildi_credit'
+        // Both XAF-only concepts (see with() above) - never usable once a
+        // non-XAF currency is active, regardless of what was submitted.
+        $useCredit = $currency->code === 'XAF'
+            && $this->paymentMethod === 'selbuildi_credit'
             && $creditAccount?->isApproved()
             && $creditAccount->available_credit >= $subtotal;
 
         // Trust the submitted payment method only if it's still actually
-        // enabled right now - the option list a customer saw when the page
-        // loaded could be stale (an admin toggled a gateway off since).
-        $onlineProvider = ! $useCredit && $gateways->isEnabled($this->paymentMethod)
+        // enabled, and actually able to process this currency, right now -
+        // the option list a customer saw when the page loaded could be
+        // stale (an admin toggled a gateway off, or the currency changed
+        // since).
+        $onlineProvider = ! $useCredit
+            && $gateways->isEnabled($this->paymentMethod)
+            && $gateways->supportsCurrency($this->paymentMethod, $currency->code)
             ? $this->paymentMethod
             : null;
+
+        if (! $useCredit && ! $onlineProvider && $currency->code !== 'XAF') {
+            // No XAF-only cash-on-delivery fallback once paying in another
+            // currency - there has to be a real online provider selected.
+            $this->addError('paymentMethod', "Please choose a payment method that supports {$currency->code}.");
+
+            return;
+        }
 
         $paymentMethod = match (true) {
             $useCredit => 'selbuildi_credit',
@@ -130,7 +147,7 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
             default => 'cash_on_delivery',
         };
 
-        [$order, $payment] = DB::transaction(function () use ($cart, $subtotal, $paymentMethod, $onlineProvider) {
+        [$order, $payment] = DB::transaction(function () use ($cart, $subtotal, $paymentMethod, $onlineProvider, $currency) {
             $order = Order::create([
                 'order_number' => Order::generateOrderNumber(),
                 'user_id' => Auth::id(),
@@ -140,7 +157,14 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                 'tax' => 0,
                 'discount' => 0,
                 'total' => $subtotal,
-                'currency' => 'XAF',
+                // subtotal/total stay in XAF always (the canonical ledger
+                // amount every existing report/sum already assumes) -
+                // currency + exchange_rate record what the customer is
+                // actually being charged, a snapshot fixed at this moment
+                // so it can never silently drift if the rate is edited
+                // later.
+                'currency' => $currency->code,
+                'exchange_rate' => $currency->rate_to_xaf,
                 'payment_status' => 'pending',
                 'payment_method' => $paymentMethod,
                 'shipping_address_id' => $this->selectedAddressId,
@@ -191,7 +215,7 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
             $payment = $onlineProvider ? Payment::create([
                 'order_id' => $order->id,
                 'provider' => $onlineProvider,
-                'amount' => $order->total,
+                'amount' => $order->chargedAmount($order->total),
                 'currency' => $order->currency,
                 'status' => 'pending',
                 'reference' => 'SB-'.strtoupper(Str::random(12)),
@@ -266,25 +290,39 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
             $countries = [$this->country => $this->country] + $countries;
         }
 
+        $currency = app(CurrencyContext::class)->current();
+        $gateways = app(PaymentGatewayManager::class);
+
         return [
             'cart' => $cart,
             'itemsBySupplier' => $cart->itemsBySupplier(),
             'addresses' => Auth::user()->addresses,
             'countries' => $countries,
+            'currency' => $currency,
             'projects' => Auth::user()->isContractor() ? Auth::user()->projects()->where('status', 'active')->get() : collect(),
             'creditAccount' => $creditAccount,
-            'creditUsableForOrder' => $creditAccount?->isApproved() && $creditAccount->available_credit >= $cart->subtotal(),
+            // Cash on delivery and Selbuildi Credit are both XAF-only
+            // concepts (COD is a Cameroon-local delivery/cash-handling
+            // flow; credit limits and drawdowns are all denominated in
+            // XAF) - only offered when paying in XAF.
+            'codAvailable' => $currency->code === 'XAF',
+            'creditUsableForOrder' => $currency->code === 'XAF'
+                && $creditAccount?->isApproved()
+                && $creditAccount->available_credit >= $cart->subtotal(),
             // Split rather than one flat list - mobile money (Fapshi) is a
             // fundamentally different customer flow (a USSD prompt on their
             // own phone) from card/hosted-page gateways, and the checkout
             // UI should say so rather than presenting all three as
-            // interchangeable "redirect to pay" buttons.
+            // interchangeable "redirect to pay" buttons. Both filtered to
+            // only the providers that can actually process the customer's
+            // selected currency.
             'cardGateways' => PaymentGateway::where('is_enabled', true)
                 ->whereIn('provider', ['flutterwave', 'paystack'])
-                ->get(),
-            'mobileMoneyGateway' => PaymentGateway::where('is_enabled', true)
-                ->where('provider', 'fapshi')
-                ->first(),
+                ->get()
+                ->filter(fn ($gateway) => $gateways->supportsCurrency($gateway->provider, $currency->code)),
+            'mobileMoneyGateway' => $gateways->supportsCurrency('fapshi', $currency->code)
+                ? PaymentGateway::where('is_enabled', true)->where('provider', 'fapshi')->first()
+                : null,
         ];
     }
 }; ?>
@@ -488,23 +526,25 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                                 <p class="text-xs font-semibold text-navy-500 uppercase tracking-wide mb-2" id="payment-method-label">Payment method</p>
 
                                 <div class="space-y-2" role="radiogroup" aria-labelledby="payment-method-label">
-                                    <button
-                                        type="button"
-                                        role="radio"
-                                        aria-checked="{{ $paymentMethod === 'cash_on_delivery' ? 'true' : 'false' }}"
-                                        wire:click="$set('paymentMethod', 'cash_on_delivery')"
-                                        @class([
-                                            'w-full text-left p-4 rounded-xl border-2 transition-colors duration-150 flex items-start gap-3',
-                                            'border-gold-500 bg-gold-50' => $paymentMethod === 'cash_on_delivery',
-                                            'border-navy-100 hover:border-navy-300' => $paymentMethod !== 'cash_on_delivery',
-                                        ])
-                                    >
-                                        <x-icon name="wallet" class="w-4 h-4 mt-0.5 shrink-0" />
-                                        <span>
-                                            <span class="font-semibold text-navy-900 text-sm block">Cash / Pay on Delivery</span>
-                                            <span class="text-xs text-navy-400">Pay when your materials arrive.</span>
-                                        </span>
-                                    </button>
+                                    @if ($codAvailable)
+                                        <button
+                                            type="button"
+                                            role="radio"
+                                            aria-checked="{{ $paymentMethod === 'cash_on_delivery' ? 'true' : 'false' }}"
+                                            wire:click="$set('paymentMethod', 'cash_on_delivery')"
+                                            @class([
+                                                'w-full text-left p-4 rounded-xl border-2 transition-colors duration-150 flex items-start gap-3',
+                                                'border-gold-500 bg-gold-50' => $paymentMethod === 'cash_on_delivery',
+                                                'border-navy-100 hover:border-navy-300' => $paymentMethod !== 'cash_on_delivery',
+                                            ])
+                                        >
+                                            <x-icon name="wallet" class="w-4 h-4 mt-0.5 shrink-0" />
+                                            <span>
+                                                <span class="font-semibold text-navy-900 text-sm block">Cash / Pay on Delivery</span>
+                                                <span class="text-xs text-navy-400">Pay when your materials arrive.</span>
+                                            </span>
+                                        </button>
+                                    @endif
 
                                     @if ($creditUsableForOrder)
                                         <button
@@ -567,6 +607,7 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                                         </button>
                                     @endif
                                 </div>
+                                <x-input-error :messages="$errors->get('paymentMethod')" class="mt-2" />
                             </div>
 
                             <div class="mt-6 flex items-center gap-3">
@@ -588,21 +629,29 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                 <!-- Order summary -->
                 <div class="lg:col-span-1">
                     <div class="bg-white rounded-2xl border border-navy-100 p-6 sticky top-24">
-                        <h3 class="font-heading font-semibold text-navy-900">Order Summary</h3>
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-heading font-semibold text-navy-900">Order Summary</h3>
+                            @if ($currency->code !== 'XAF')
+                                <span class="text-[11px] font-semibold uppercase tracking-wide text-gold-800 bg-gold-50 px-2 py-1 rounded-full">Paying in {{ $currency->code }}</span>
+                            @endif
+                        </div>
                         <div class="mt-4 space-y-2 text-sm">
                             <div class="flex justify-between text-navy-500">
                                 <span>Subtotal ({{ $cart->totalQuantity() }} items)</span>
-                                <span class="text-navy-900 font-medium">{{ number_format($cart->subtotal()) }} XAF</span>
+                                <x-price :xaf="$cart->subtotal()" class="text-navy-900 font-medium" />
                             </div>
                             <div class="flex justify-between text-navy-500">
                                 <span>Delivery</span>
                                 <span class="text-navy-900 font-medium">Calculated later</span>
                             </div>
                         </div>
-                        <div class="mt-4 pt-4 border-t border-navy-100 flex justify-between">
+                        <div class="mt-4 pt-4 border-t border-navy-100 flex justify-between items-baseline">
                             <span class="font-semibold text-navy-900">Total</span>
-                            <span class="font-heading font-bold text-navy-900">{{ number_format($cart->subtotal()) }} XAF</span>
+                            <x-price :xaf="$cart->subtotal()" :show-xaf-hint="true" class="font-heading font-bold text-navy-900" />
                         </div>
+                        @if ($currency->code !== 'XAF')
+                            <p class="mt-2 text-[11px] text-navy-400">1 {{ $currency->code }} = {{ number_format((float) $currency->rate_to_xaf, 2) }} XAF. This rate is locked in once you place your order.</p>
+                        @endif
                     </div>
                 </div>
             </div>

@@ -265,9 +265,13 @@ class CheckoutTest extends TestCase
 
     public function test_choosing_an_enabled_online_gateway_creates_a_pending_payment_and_redirects_to_hosted_checkout(): void
     {
+        // Flutterwave, not Paystack - Paystack doesn't support XAF at all
+        // (see PaymentGatewayManager::SUPPORTED_CURRENCIES), so it's
+        // correctly filtered out of the payment-method options for a
+        // customer paying in XAF, same as any other currency mismatch.
         PaymentGateway::create([
-            'provider' => 'paystack',
-            'display_name' => 'Paystack',
+            'provider' => 'flutterwave',
+            'display_name' => 'Flutterwave',
             'is_enabled' => true,
             'mode' => 'test',
             'credentials' => ['secret_key' => 'sk_test_abc'],
@@ -283,26 +287,26 @@ class CheckoutTest extends TestCase
             'is_default' => true,
         ]);
 
-        Http::fake(['api.paystack.co/*' => Http::response([
-            'status' => true,
-            'data' => ['authorization_url' => 'https://checkout.paystack.com/xyz'],
+        Http::fake(['api.flutterwave.com/*' => Http::response([
+            'status' => 'success',
+            'data' => ['link' => 'https://checkout.flutterwave.com/pay/xyz'],
         ])]);
 
         $component = Volt::test('checkout.index')
             ->set('step', 'confirm')
             ->set('selectedAddressId', $address->id)
-            ->set('paymentMethod', 'paystack')
+            ->set('paymentMethod', 'flutterwave')
             ->call('placeOrder');
 
         $order = \App\Models\Order::sole();
-        $this->assertSame('paystack', $order->payment_method);
+        $this->assertSame('flutterwave', $order->payment_method);
 
         $payment = \App\Models\Payment::sole();
-        $this->assertSame('paystack', $payment->provider);
+        $this->assertSame('flutterwave', $payment->provider);
         $this->assertSame('pending', $payment->status);
         $this->assertSame(2 * $product->price, $payment->amount);
 
-        $component->assertRedirect('https://checkout.paystack.com/xyz');
+        $component->assertRedirect('https://checkout.flutterwave.com/pay/xyz');
     }
 
     public function test_a_disabled_gateway_cannot_be_used_even_if_submitted_directly(): void
@@ -333,8 +337,8 @@ class CheckoutTest extends TestCase
     public function test_a_failed_payment_initialize_still_leaves_the_order_placed_and_redirects_gracefully(): void
     {
         PaymentGateway::create([
-            'provider' => 'paystack',
-            'display_name' => 'Paystack',
+            'provider' => 'flutterwave',
+            'display_name' => 'Flutterwave',
             'is_enabled' => true,
             'mode' => 'test',
             'credentials' => ['secret_key' => 'sk_test_abc'],
@@ -350,13 +354,13 @@ class CheckoutTest extends TestCase
             'is_default' => true,
         ]);
 
-        // Simulate Paystack's API being down/erroring.
-        Http::fake(['api.paystack.co/*' => Http::response(['status' => false], 500)]);
+        // Simulate Flutterwave's API being down/erroring.
+        Http::fake(['api.flutterwave.com/*' => Http::response(['status' => 'error'], 500)]);
 
         $component = Volt::test('checkout.index')
             ->set('step', 'confirm')
             ->set('selectedAddressId', $address->id)
-            ->set('paymentMethod', 'paystack')
+            ->set('paymentMethod', 'flutterwave')
             ->call('placeOrder');
 
         // The order and payment already saved successfully before the
@@ -374,7 +378,7 @@ class CheckoutTest extends TestCase
     public function test_mobile_money_is_shown_separately_from_card_gateways(): void
     {
         PaymentGateway::create(['provider' => 'fapshi', 'display_name' => 'Fapshi (MTN/Orange Money)', 'is_enabled' => true, 'mode' => 'test', 'credentials' => []]);
-        PaymentGateway::create(['provider' => 'paystack', 'display_name' => 'Paystack', 'is_enabled' => true, 'mode' => 'test', 'credentials' => []]);
+        PaymentGateway::create(['provider' => 'flutterwave', 'display_name' => 'Flutterwave', 'is_enabled' => true, 'mode' => 'test', 'credentials' => []]);
 
         $this->customerWithCartItem();
 
@@ -382,6 +386,6 @@ class CheckoutTest extends TestCase
             ->set('step', 'confirm')
             ->assertSee('Or pay with Mobile Money')
             ->assertSee('MTN Mobile Money / Orange Money')
-            ->assertSee('Pay with Paystack');
+            ->assertSee('Pay with Flutterwave');
     }
 }

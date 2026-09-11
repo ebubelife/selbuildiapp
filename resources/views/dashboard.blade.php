@@ -255,7 +255,7 @@
                                         </div>
                                         <div class="p-3">
                                             <p class="font-semibold text-navy-900 text-xs truncate">{{ $product->name }}</p>
-                                            <p class="mt-1 font-heading font-bold text-navy-900 text-sm">{{ number_format($product->price) }} <span class="text-xs font-normal text-navy-400">XAF</span></p>
+                                            <x-price :xaf="$product->price" class="mt-1 font-heading font-bold text-navy-900 text-sm" />
                                         </div>
                                     </a>
                                 @endforeach

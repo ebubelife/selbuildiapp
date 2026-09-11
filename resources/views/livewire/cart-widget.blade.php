@@ -75,7 +75,7 @@
                                     </span>
                                     <div class="flex-1 min-w-0">
                                         <h3 class="font-semibold text-navy-900 text-sm truncate">{{ $item->product->name }}</h3>
-                                        <p class="text-xs text-navy-400 mt-0.5">{{ number_format($item->unit_price_snapshot) }} XAF / {{ $item->product->unit }}</p>
+                                        <p class="text-xs text-navy-400 mt-0.5"><x-price :xaf="$item->unit_price_snapshot" /> / {{ $item->product->unit }}</p>
 
                                         <div class="mt-3 flex items-center justify-between">
                                             <div class="flex items-center border border-navy-200 rounded-lg">
@@ -96,7 +96,7 @@
                     <div class="border-t border-navy-100 px-6 py-5">
                         <div class="flex items-center justify-between mb-4">
                             <span class="text-sm text-navy-500">Subtotal</span>
-                            <span class="font-heading font-bold text-navy-900">{{ number_format($cart->subtotal()) }} XAF</span>
+                            <x-price :xaf="$cart->subtotal()" class="font-heading font-bold text-navy-900" />
                         </div>
                         <a href="{{ route('checkout.index') }}" wire:navigate>
                             <x-primary-button class="w-full justify-center py-3">Checkout</x-primary-button>

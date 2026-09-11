@@ -325,7 +325,7 @@ new #[Layout('components.layouts.site', [
                                 </a>
                                 <div class="px-5 pb-5">
                                     <div class="mt-3 flex items-center justify-between">
-                                        <span class="font-heading font-bold text-navy-900">{{ number_format($product->price) }} <span class="text-xs font-normal text-navy-400">XAF</span></span>
+                                        <x-price :xaf="$product->price" class="font-heading font-bold text-navy-900" />
                                         <button
                                             type="button"
                                             wire:click="addToCart({{ $product->id }})"

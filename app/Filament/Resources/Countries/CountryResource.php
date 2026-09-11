@@ -4,11 +4,13 @@ namespace App\Filament\Resources\Countries;
 
 use App\Filament\Resources\Countries\Pages\ManageCountries;
 use App\Models\Country;
+use App\Models\Currency;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
@@ -50,6 +52,11 @@ class CountryResource extends Resource
                     ->label('Available for checkout')
                     ->helperText('Lets a customer pick this country as a delivery address at checkout. Off by default - Selbuildi doesn\'t ship building materials everywhere.')
                     ->default(false),
+                Select::make('currency_code')
+                    ->label('Currency')
+                    ->options(fn () => ['XAF' => 'XAF - Central African CFA Franc'] + Currency::where('code', '!=', 'XAF')->orderBy('code')->pluck('name', 'code')->all())
+                    ->searchable()
+                    ->helperText('A customer registered with this country auto-defaults to this currency (Settings -> Currencies controls the actual exchange rate).'),
             ]);
     }
 
@@ -59,6 +66,7 @@ class CountryResource extends Resource
             ->columns([
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('code')->label('ISO Code')->badge(),
+                TextColumn::make('currency_code')->label('Currency')->placeholder('—'),
                 IconColumn::make('checkout_enabled')->label('Checkout')->boolean()->sortable(),
             ])
             ->defaultSort('name')

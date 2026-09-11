@@ -4,6 +4,7 @@ namespace App\Filament\Resources\PaymentGateways;
 
 use App\Filament\Resources\PaymentGateways\Pages\ManagePaymentGateways;
 use App\Models\PaymentGateway;
+use App\Services\Payments\PaymentGatewayManager;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Placeholder;
@@ -23,22 +24,21 @@ use UnitEnum;
 
 class PaymentGatewayResource extends Resource
 {
-    /**
-     * Selbuildi transacts entirely in XAF today - this exists so it's
-     * impossible to enable a provider that can't actually process that
-     * without seeing why, right on the list. Paystack (Nigeria/Ghana/
-     * South Africa/Kenya-focused) doesn't support XAF at all; it was
-     * built alongside the others as a currency-agnostic integration for
-     * whenever multi-currency pricing exists, not because it works for
-     * Cameroon orders today.
-     */
-    private const SUPPORTED_CURRENCIES = [
-        'flutterwave' => 'XAF, NGN, GHS, KES, USD, and more',
-        'paystack' => 'NGN, GHS, ZAR, KES, USD - no XAF',
-        'fapshi' => 'XAF only',
-    ];
-
     protected static ?string $model = PaymentGateway::class;
+
+    /**
+     * Reads PaymentGatewayManager::SUPPORTED_CURRENCIES (the same list
+     * checkout actually filters payment methods against) rather than
+     * maintaining a second, separately-worded description here that could
+     * drift out of sync with what's really supported.
+     */
+    private static function supportedCurrenciesLabel(string $provider): string
+    {
+        $currencies = PaymentGatewayManager::SUPPORTED_CURRENCIES[$provider] ?? [];
+        $label = implode(', ', $currencies) ?: '—';
+
+        return $provider === 'paystack' ? "{$label} - no XAF" : $label;
+    }
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;
 
@@ -123,7 +123,7 @@ class PaymentGatewayResource extends Resource
                 TextColumn::make('display_name')->label('Provider')->sortable(),
                 TextColumn::make('provider')
                     ->label('Supported currencies')
-                    ->formatStateUsing(fn (string $state) => self::SUPPORTED_CURRENCIES[$state] ?? '—')
+                    ->formatStateUsing(fn (string $state) => self::supportedCurrenciesLabel($state))
                     ->color(fn (PaymentGateway $record) => $record->provider === 'paystack' ? 'danger' : null),
                 IconColumn::make('is_enabled')->label('Enabled')->boolean(),
                 BadgeColumn::make('mode')

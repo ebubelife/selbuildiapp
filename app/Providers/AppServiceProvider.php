@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Services\CartService;
+use App\Services\CurrencyContext;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -18,6 +19,12 @@ class AppServiceProvider extends ServiceProvider
         // buttons, and the page itself all otherwise re-querying the same
         // cart independently.
         $this->app->singleton(CartService::class);
+
+        // Same reasoning: CurrencyContext resolves the active currency
+        // once (session lookup + a query) and every <x-price>, the
+        // switcher, and checkout within one request should share that
+        // single resolution rather than each re-deriving it.
+        $this->app->singleton(CurrencyContext::class);
     }
 
     /**

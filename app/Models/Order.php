@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'order_number', 'user_id', 'project_id', 'status', 'subtotal', 'shipping_fee',
-    'tax', 'discount', 'total', 'currency', 'payment_status', 'payment_method',
+    'tax', 'discount', 'total', 'currency', 'exchange_rate', 'payment_status', 'payment_method',
     'shipping_address_id', 'placed_at',
 ])]
 class Order extends Model
@@ -31,6 +31,7 @@ class Order extends Model
     {
         return [
             'placed_at' => 'datetime',
+            'exchange_rate' => 'decimal:6',
         ];
     }
 
@@ -117,9 +118,25 @@ class Order extends Model
             && ! in_array($this->status, ['cancelled', 'refunded'], true);
     }
 
+    /**
+     * subtotal/shipping_fee/tax/discount/total are always stored in XAF -
+     * the canonical ledger amount every existing report/sum assumes.
+     * This converts that fixed XAF amount into whatever currency+rate
+     * were snapshotted onto this order at placement time (or, for a
+     * legacy/XAF order, is a no-op: exchange_rate defaults to 1).
+     */
+    public function chargedAmount(int $xafAmount): int
+    {
+        if ($this->currency === 'XAF' || (float) $this->exchange_rate <= 0) {
+            return $xafAmount;
+        }
+
+        return (int) round($xafAmount / (float) $this->exchange_rate);
+    }
+
     public function formattedTotal(): string
     {
-        return number_format($this->total).' '.$this->currency;
+        return number_format($this->chargedAmount($this->total)).' '.$this->currency;
     }
 
     public static function generateOrderNumber(): string

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Country;
+use App\Models\Currency;
 use App\Models\User;
 use App\Notifications\WelcomeEmail;
 use App\Services\CartService;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -75,7 +77,7 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
         if ($this->role === 'customer') {
             $rules['project_country'] = ['required', 'string', 'exists:countries,name'];
             $rules['account_type'] = ['required', 'in:individual,diaspora_buyer,property_developer'];
-            $rules['preferred_currency'] = ['required', 'in:XAF,USD,EUR,GBP'];
+            $rules['preferred_currency'] = ['required', Rule::in(array_keys(Currency::supportedOptions()))];
         }
 
         if ($this->role === 'contractor') {
@@ -338,9 +340,9 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
                     <x-input-label for="preferred_currency" value="Preferred Currency" />
                     <select wire:model="preferred_currency" id="preferred_currency" class="mt-1 block w-full rounded-lg border-navy-200 focus:border-gold-500 focus:ring-gold-500 text-sm">
                         <option value="XAF">XAF</option>
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
-                        <option value="GBP">GBP</option>
+                        @foreach (\App\Models\Currency::supportedOptions() as $code => $label)
+                            <option value="{{ $code }}">{{ $code }}</option>
+                        @endforeach
                     </select>
                     <x-input-error :messages="$errors->get('preferred_currency')" class="mt-2" />
                 </div>

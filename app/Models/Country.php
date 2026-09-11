@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['name', 'code', 'checkout_enabled'])]
+#[Fillable(['name', 'code', 'checkout_enabled', 'currency_code'])]
 class Country extends Model
 {
     protected function casts(): array

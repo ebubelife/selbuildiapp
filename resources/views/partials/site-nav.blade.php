@@ -23,6 +23,7 @@
             </div>
 
             <div class="hidden lg:flex items-center gap-3">
+                <livewire:currency-switcher />
                 <livewire:cart-widget />
 
                 @auth
@@ -38,6 +39,7 @@
             </div>
 
             <div class="flex items-center gap-1 lg:hidden">
+                <livewire:currency-switcher />
                 <livewire:cart-widget />
 
                 <button

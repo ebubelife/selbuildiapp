@@ -40,7 +40,11 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
         $payment = Payment::create([
             'order_id' => $this->order->id,
             'provider' => $this->order->payment_method,
-            'amount' => $this->order->total,
+            // Uses the order's own snapshotted exchange_rate (fixed at
+            // placement), not a fresh session currency lookup - a retry
+            // must charge the same amount the customer originally agreed
+            // to, not whatever the rate happens to be right now.
+            'amount' => $this->order->chargedAmount($this->order->total),
             'currency' => $this->order->currency,
             'status' => 'pending',
             'reference' => 'SB-'.strtoupper(Str::random(12)),
@@ -147,9 +151,9 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                             </span>
                             <div class="flex-1 min-w-0">
                                 <p class="font-semibold text-navy-900 text-sm truncate">{{ $item->product_name }}</p>
-                                <p class="text-xs text-navy-400">{{ $item->supplierProfile->business_name }} &middot; {{ $item->quantity }} &times; {{ number_format($item->unit_price) }} XAF</p>
+                                <p class="text-xs text-navy-400">{{ $item->supplierProfile->business_name }} &middot; {{ $item->quantity }} &times; {{ number_format($order->chargedAmount($item->unit_price)) }} {{ $order->currency }}</p>
                             </div>
-                            <span class="font-semibold text-navy-900 text-sm">{{ number_format($item->total_price) }} XAF</span>
+                            <span class="font-semibold text-navy-900 text-sm">{{ number_format($order->chargedAmount($item->total_price)) }} {{ $order->currency }}</span>
                         </li>
                     @endforeach
                 </ul>
