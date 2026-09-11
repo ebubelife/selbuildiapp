@@ -172,6 +172,8 @@ class PaymentIntegrationTest extends TestCase
         $this->assertNotNull($payment->paid_at);
         $this->assertSame('paid', $order->payment_status);
         $this->assertSame('confirmed', $order->status);
+
+        $this->assertDatabaseHas('activity_logs', ['type' => 'payment_received']);
     }
 
     public function test_confirm_marks_payment_failed_on_amount_mismatch(): void

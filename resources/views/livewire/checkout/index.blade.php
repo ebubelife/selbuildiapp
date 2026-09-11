@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Address;
 use App\Models\Country;
 use App\Models\Inventory;
@@ -240,6 +241,8 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                 'error' => $e->getMessage(),
             ]);
         }
+
+        ActivityLog::log('order_placed', Auth::user()->name." placed order {$order->order_number}.", $order, Auth::user());
 
         if ($payment) {
             try {

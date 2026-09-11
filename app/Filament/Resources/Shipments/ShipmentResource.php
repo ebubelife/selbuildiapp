@@ -8,6 +8,7 @@ use App\Models\DeliveryAgent;
 use App\Models\Order;
 use App\Models\Shipment;
 use App\Models\SupplierProfile;
+use App\Notifications\DeliveryAgentAssigned;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
@@ -15,6 +16,7 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -25,6 +27,8 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 use UnitEnum;
 
 class ShipmentResource extends Resource
@@ -59,6 +63,12 @@ class ShipmentResource extends Resource
                     'danger' => ['cancelled', 'refunded'],
                 ]),
                 TextColumn::make('deliveryAgent.name')->label('Delivery Agent')->placeholder('Unassigned')->searchable(),
+                TextColumn::make('pending_update')
+                    ->label('Pending Update')
+                    ->state(fn (Shipment $record) => $record->pendingUpdateRequest()?->requestedStatusLabel())
+                    ->placeholder('—')
+                    ->badge()
+                    ->color('warning'),
                 TextColumn::make('carrier')->placeholder('—'),
                 TextColumn::make('tracking_reference')->label('Tracking #')->placeholder('—')->copyable(),
                 TextColumn::make('dispatched_at')->label('Dispatched')->dateTime()->placeholder('—')->sortable(),
@@ -103,6 +113,7 @@ class ShipmentResource extends Resource
                         TextEntry::make('expected_delivery_at')->label('Expected delivery')->dateTime()->placeholder('—'),
                         TextEntry::make('delivered_at')->dateTime()->placeholder('—'),
                         TextEntry::make('proof_of_delivery_note')->label('Proof of delivery')->placeholder('—')->columnSpanFull(),
+                        ImageEntry::make('proof_photo_path')->label('Proof photo')->disk('public')->visible(fn (Shipment $record) => filled($record->proof_photo_path))->columnSpanFull(),
                         TextEntry::make('notes')->placeholder('—')->columnSpanFull(),
                     ])->columns(2),
                 ]),
@@ -120,6 +131,24 @@ class ShipmentResource extends Resource
                     ->fillForm(fn (Shipment $record) => ['delivery_agent_id' => $record->delivery_agent_id])
                     ->action(function (Shipment $record, array $data) {
                         $record->update(['delivery_agent_id' => $data['delivery_agent_id']]);
+
+                        $agent = DeliveryAgent::find($data['delivery_agent_id']);
+
+                        // Roster-only agents (admin-added, no self-registered
+                        // account) have nothing to log into, so there's no
+                        // one to email - skip silently rather than error.
+                        if ($agent?->user) {
+                            try {
+                                $agent->user->notify(new DeliveryAgentAssigned($record));
+                            } catch (Throwable $e) {
+                                Log::error('DeliveryAgentAssigned notification failed to send', [
+                                    'shipment_id' => $record->id,
+                                    'delivery_agent_id' => $agent->id,
+                                    'error' => $e->getMessage(),
+                                ]);
+                            }
+                        }
+
                         Notification::make()->title('Delivery agent assigned')->success()->send();
                     }),
                 Action::make('updateLogistics')

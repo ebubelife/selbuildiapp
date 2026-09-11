@@ -201,4 +201,64 @@ class RegistrationTest extends TestCase
         $component->assertHasErrors(['id_document' => 'required']);
         $this->assertGuest();
     }
+
+    public function test_new_delivery_agents_can_register_with_a_pending_profile(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $component = Volt::test('pages.auth.register')
+            ->set('role', 'delivery_agent')
+            ->set('first_name', 'Test')
+            ->set('last_name', 'Agent')
+            ->set('email', 'agent@example.com')
+            ->set('phone', '+237600000000')
+            ->set('phone_2', '+237611111111')
+            ->set('vehicle_id', 'LT-1234-CM')
+            ->set('id_document', UploadedFile::fake()->create('license.pdf', 500, 'application/pdf'))
+            ->set('photo', UploadedFile::fake()->image('face.jpg'))
+            ->set('password', 'password')
+            ->set('password_confirmation', 'password');
+
+        $component->call('register');
+
+        $component->assertRedirect(route('dashboard', absolute: false));
+
+        $this->assertAuthenticated();
+
+        $user = auth()->user();
+        $this->assertSame('delivery_agent', $user->role);
+        $this->assertTrue($user->isDeliveryAgent());
+
+        $profile = $user->deliveryAgentProfile;
+        $this->assertNotNull($profile);
+        $this->assertSame('Test Agent', $profile->name);
+        $this->assertSame('+237611111111', $profile->phone_2);
+        $this->assertSame('LT-1234-CM', $profile->vehicle_id);
+        $this->assertFalse($profile->is_active);
+        Storage::disk('local')->assertExists($profile->document_path);
+        Storage::disk('public')->assertExists($profile->photo_path);
+
+        $this->assertDatabaseHas('activity_logs', [
+            'type' => 'user_registered',
+            'causer_id' => $user->id,
+        ]);
+    }
+
+    public function test_delivery_agent_registration_requires_a_profile_photo(): void
+    {
+        $component = Volt::test('pages.auth.register')
+            ->set('role', 'delivery_agent')
+            ->set('first_name', 'Test')
+            ->set('last_name', 'Agent')
+            ->set('email', 'agent@example.com')
+            ->set('phone', '+237600000000')
+            ->set('password', 'password')
+            ->set('password_confirmation', 'password');
+
+        $component->call('register');
+
+        $component->assertHasErrors(['photo' => 'required']);
+        $this->assertGuest();
+    }
 }

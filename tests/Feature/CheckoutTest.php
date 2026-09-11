@@ -201,6 +201,13 @@ class CheckoutTest extends TestCase
 
         $this->assertSame(0, $user->fresh()->cart->items()->count());
 
+        $this->assertDatabaseHas('activity_logs', [
+            'type' => 'order_placed',
+            'subject_type' => (new \App\Models\Order)->getMorphClass(),
+            'subject_id' => $order->id,
+            'causer_id' => $user->id,
+        ]);
+
         $component->assertRedirect(route('orders.show', $order));
     }
 

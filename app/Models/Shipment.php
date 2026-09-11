@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'order_id', 'supplier_profile_id', 'delivery_agent_id', 'status', 'carrier', 'tracking_reference',
-    'dispatched_at', 'expected_delivery_at', 'delivered_at', 'proof_of_delivery_note', 'notes',
+    'dispatched_at', 'expected_delivery_at', 'delivered_at', 'proof_of_delivery_note', 'proof_photo_path', 'notes',
 ])]
 class Shipment extends Model
 {
@@ -34,6 +35,16 @@ class Shipment extends Model
     public function deliveryAgent(): BelongsTo
     {
         return $this->belongsTo(DeliveryAgent::class);
+    }
+
+    public function updateRequests(): HasMany
+    {
+        return $this->hasMany(ShipmentUpdateRequest::class);
+    }
+
+    public function pendingUpdateRequest(): ?ShipmentUpdateRequest
+    {
+        return $this->updateRequests()->where('status', 'pending')->latest()->first();
     }
 
     public function statusLabel(): string

@@ -50,6 +50,11 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasOne(ContractorProfile::class);
     }
 
+    public function deliveryAgentProfile(): HasOne
+    {
+        return $this->hasOne(DeliveryAgent::class);
+    }
+
     public function cart(): HasOne
     {
         return $this->hasOne(Cart::class);
@@ -103,6 +108,11 @@ class User extends Authenticatable implements FilamentUser
     public function isContractor(): bool
     {
         return $this->role === 'contractor';
+    }
+
+    public function isDeliveryAgent(): bool
+    {
+        return $this->role === 'delivery_agent';
     }
 
     public function canAccessPanel(Panel $panel): bool

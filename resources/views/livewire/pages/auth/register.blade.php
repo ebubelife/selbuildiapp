@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Country;
 use App\Models\Currency;
 use App\Models\User;
@@ -55,21 +56,28 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
     public $id_document;
     public $photo;
 
+    // Delivery agent only.
+    public string $phone_2 = '';
+    public string $vehicle_id = '';
+
     /**
      * Handle an incoming registration request.
      */
     public function register(): void
     {
         $rules = [
-            'role' => ['required', 'in:customer,contractor,supplier'],
+            'role' => ['required', 'in:customer,contractor,supplier,delivery_agent'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'phone' => ['required', 'string', 'max:30'],
             'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
         ];
 
-        if (in_array($this->role, ['customer', 'contractor'], true)) {
+        if (in_array($this->role, ['customer', 'contractor', 'delivery_agent'], true)) {
             $rules['first_name'] = ['required', 'string', 'max:255'];
             $rules['last_name'] = ['required', 'string', 'max:255'];
+        }
+
+        if (in_array($this->role, ['customer', 'contractor'], true)) {
             $rules['country'] = ['required', 'string', 'exists:countries,name'];
             $rules['city'] = ['required', 'string', 'max:255'];
         }
@@ -94,6 +102,13 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
         if ($this->role === 'supplier') {
             $rules['name'] = ['required', 'string', 'max:255'];
             $rules['business_name'] = ['required', 'string', 'max:255'];
+        }
+
+        if ($this->role === 'delivery_agent') {
+            $rules['phone_2'] = ['nullable', 'string', 'max:30'];
+            $rules['vehicle_id'] = ['nullable', 'string', 'max:255'];
+            $rules['id_document'] = ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'];
+            $rules['photo'] = ['required', 'image', 'max:2048'];
         }
 
         $validated = $this->validate($rules);
@@ -148,6 +163,29 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
             ]);
         }
 
+        if ($this->role === 'delivery_agent') {
+            // Same private-disk treatment as the contractor's ID document
+            // above - a driver's license is KYC material, never public.
+            $idDocumentPath = $this->id_document?->store('delivery-agent-documents', 'local');
+            $photoPath = $this->photo->store('delivery-agent-photos', 'public');
+
+            $user->deliveryAgentProfile()->create([
+                'name' => $name,
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'phone_2' => $validated['phone_2'] ?? null,
+                'vehicle_id' => $validated['vehicle_id'] ?? null,
+                'document_path' => $idDocumentPath,
+                'photo_path' => $photoPath,
+                // Awaiting admin approval before they can be assigned
+                // deliveries or seen as anything but pending in their own
+                // dashboard - same gate as contractor verification.
+                'is_active' => false,
+            ]);
+        }
+
+        ActivityLog::log('user_registered', "{$user->name} signed up as {$user->role}.", $user, $user);
+
         event(new Registered($user));
 
         // The account already saved successfully above - a mail failure
@@ -181,13 +219,14 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
     <p class="mt-1 text-sm text-navy-500">Start sourcing building materials from verified suppliers.</p>
 
     <!-- Account type tabs -->
-    <div class="mt-6 relative grid grid-cols-3 gap-1 rounded-xl bg-navy-50 p-1">
+    <div class="mt-6 relative grid grid-cols-4 gap-1 rounded-xl bg-navy-50 p-1">
         <div
-            class="absolute inset-y-1 w-[calc(33.333%-0.167rem)] rounded-lg bg-white shadow-sm transition-transform duration-300 ease-out"
+            class="absolute inset-y-1 w-[calc(25%-0.1875rem)] rounded-lg bg-white shadow-sm transition-transform duration-300 ease-out"
             :class="{
                 'translate-x-0': role === 'customer',
                 'translate-x-[calc(100%+0.25rem)]': role === 'contractor',
                 'translate-x-[calc(200%+0.5rem)]': role === 'supplier',
+                'translate-x-[calc(300%+0.75rem)]': role === 'delivery_agent',
             }"
         ></div>
 
@@ -221,6 +260,16 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
             <x-icon name="shield" class="w-4 h-4" />
             <span class="hidden sm:inline">Supplier</span>
         </button>
+        <button
+            type="button"
+            @click="role = 'delivery_agent'"
+            aria-label="Delivery Agent"
+            class="relative z-10 flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-semibold transition-colors duration-200"
+            :class="role === 'delivery_agent' ? 'text-navy-900' : 'text-navy-400 hover:text-navy-600'"
+        >
+            <x-icon name="truck" class="w-4 h-4" />
+            <span class="hidden sm:inline">Delivery</span>
+        </button>
     </div>
 
     <p
@@ -243,6 +292,17 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
         x-cloak
     >
         Contractor accounts are verified before listings/orders unlock full features, and can group orders into Projects to track spend per build.
+    </p>
+
+    <p
+        x-show="role === 'delivery_agent'"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 -translate-y-1"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        class="mt-3 text-xs text-navy-500 bg-gold-50 border border-gold-100 rounded-lg px-3 py-2"
+        x-cloak
+    >
+        Delivery agent accounts are approved by our team before you can be assigned any deliveries.
     </p>
 
     <form wire:submit="register" enctype="multipart/form-data" class="mt-6 {{ $errors->any() ? 'animate-shake' : '' }}">
@@ -295,7 +355,7 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
         </div>
 
         <!-- Country + City (customer + contractor) -->
-        <div x-show="role !== 'supplier'" x-cloak class="mt-4 grid sm:grid-cols-2 gap-4">
+        <div x-show="role === 'customer' || role === 'contractor'" x-cloak class="mt-4 grid sm:grid-cols-2 gap-4">
             <div>
                 <x-input-label for="country" x-text="role === 'contractor' ? 'Country' : 'Country of Residence'" />
                 <select wire:model="country" id="country" class="mt-1 block w-full rounded-lg border-navy-200 focus:border-gold-500 focus:ring-gold-500 text-sm">
@@ -408,6 +468,37 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
             </div>
         </div>
 
+        <!-- Delivery agent-only fields -->
+        <div x-show="role === 'delivery_agent'" x-cloak>
+            <div class="mt-4 grid sm:grid-cols-2 gap-4">
+                <div>
+                    <x-input-label for="vehicle_id" value="Vehicle ID / Plate Number (optional)" />
+                    <x-text-input wire:model="vehicle_id" id="vehicle_id" class="block mt-1 w-full" type="text" />
+                    <x-input-error :messages="$errors->get('vehicle_id')" class="mt-2" />
+                </div>
+                <div>
+                    <x-input-label for="phone_2" value="Second Phone Number (optional)" />
+                    <x-text-input wire:model="phone_2" id="phone_2" class="block mt-1 w-full" type="tel" />
+                    <x-input-error :messages="$errors->get('phone_2')" class="mt-2" />
+                </div>
+            </div>
+
+            <div class="mt-4 grid sm:grid-cols-2 gap-4">
+                <div>
+                    <x-input-label for="id_document_agent" value="Driver's License / ID (optional)" />
+                    <input wire:model="id_document" id="id_document_agent" type="file" accept=".jpg,.jpeg,.png,.pdf" class="mt-1 block w-full text-sm text-navy-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-navy-50 file:text-navy-700 file:text-sm file:font-semibold hover:file:bg-navy-100" />
+                    <p class="mt-1 text-xs text-navy-400" wire:loading wire:target="id_document">Uploading&hellip;</p>
+                    <x-input-error :messages="$errors->get('id_document')" class="mt-2" />
+                </div>
+                <div>
+                    <x-input-label for="photo_agent" value="Profile Picture" />
+                    <input wire:model="photo" id="photo_agent" type="file" accept="image/*" class="mt-1 block w-full text-sm text-navy-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-navy-50 file:text-navy-700 file:text-sm file:font-semibold hover:file:bg-navy-100" />
+                    <p class="mt-1 text-xs text-navy-400" wire:loading wire:target="photo">Uploading&hellip;</p>
+                    <x-input-error :messages="$errors->get('photo')" class="mt-2" />
+                </div>
+            </div>
+        </div>
+
         <!-- Password -->
         <div class="mt-4 grid sm:grid-cols-2 gap-4">
             <div>
@@ -433,6 +524,7 @@ new #[Layout('layouts.guest', ['maxWidth' => 'sm:max-w-xl'])] class extends Comp
                     customer: 'Create Account',
                     contractor: 'Create Contractor Account',
                     supplier: 'Create Supplier Account',
+                    delivery_agent: 'Create Delivery Agent Account',
                 }[role]"></span>
                 <span wire:loading wire:target="register">{{ __('Creating account...') }}</span>
             </x-primary-button>

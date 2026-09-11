@@ -34,6 +34,13 @@ class WelcomeEmail extends Notification
                 ->line('Once verified, every purchase you make starts building your Procurement Trust Score.')
                 ->action('Go to your dashboard', route('dashboard')),
 
+            'delivery_agent' => (new MailMessage)
+                ->subject('Welcome to Selbuildi - approval in progress')
+                ->greeting("Welcome, {$notifiable->name}!")
+                ->line('Your delivery agent account on Selbuildi has been created.')
+                ->line("Our team is reviewing your details - you'll be able to see and act on assigned deliveries as soon as you're approved.")
+                ->action('Go to your dashboard', route('dashboard')),
+
             default => (new MailMessage)
                 ->subject('Welcome to Selbuildi')
                 ->greeting("Welcome, {$notifiable->name}!")

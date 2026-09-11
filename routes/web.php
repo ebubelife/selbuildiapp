@@ -8,6 +8,7 @@ use App\Http\Controllers\SitemapController;
 use App\Models\Category;
 use App\Models\CreditTierSetting;
 use App\Models\Product;
+use App\Models\Shipment;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
@@ -88,35 +89,47 @@ Route::middleware('auth')->group(function () {
     Volt::route('supplier/products/create', 'supplier.products.form')->name('supplier.products.create');
     Volt::route('supplier/products/{product}/edit', 'supplier.products.form')->name('supplier.products.edit');
     Volt::route('supplier/orders', 'supplier.orders.index')->name('supplier.orders.index');
+
+    Volt::route('my-deliveries', 'deliveries.index')->name('deliveries.index');
 });
 
 Route::get('dashboard', function () {
     $user = auth()->user();
     $supplier = $user->isSupplier() ? $user->supplierProfile : null;
+    $agent = $user->isDeliveryAgent() ? $user->deliveryAgentProfile : null;
+    $isBuyer = ! $user->isSupplier() && ! $user->isDeliveryAgent();
 
     return view('dashboard', [
-        'recentOrders' => $user->isSupplier()
-            ? collect()
-            : $user->orders()->latest('placed_at')->limit(5)->get(),
-        'orderCount' => $user->isSupplier() ? 0 : $user->orders()->count(),
+        'recentOrders' => $isBuyer ? $user->orders()->latest('placed_at')->limit(5)->get() : collect(),
+        'orderCount' => $isBuyer ? $user->orders()->count() : 0,
         'recentProjects' => $user->isContractor()
             ? $user->projects()->withCount('orders')->latest()->limit(3)->get()
             : collect(),
         'projectCount' => $user->isContractor() ? $user->projects()->count() : 0,
-        'trustScore' => ! $user->isSupplier() ? $user->trustScore : null,
+        'trustScore' => $isBuyer ? $user->trustScore : null,
         'productCount' => $supplier?->isVerified() ? $supplier->products()->count() : 0,
         'pendingFulfillmentCount' => $supplier?->isVerified()
             ? \App\Models\OrderItem::where('supplier_profile_id', $supplier->id)
                 ->whereIn('fulfillment_status', ['pending', 'confirmed', 'shipped'])
                 ->count()
             : 0,
-        'suggestedProducts' => $user->isSupplier()
-            ? collect()
-            : Product::where('is_active', true)
+        'suggestedProducts' => $isBuyer
+            ? Product::where('is_active', true)
                 ->with(['category', 'images'])
                 ->inRandomOrder()
                 ->limit(4)
-                ->get(),
+                ->get()
+            : collect(),
+        'deliveryAgent' => $agent,
+        'activeDeliveryCount' => $agent
+            ? Shipment::where('delivery_agent_id', $agent->id)->whereNotIn('status', ['delivered', 'cancelled', 'refunded'])->count()
+            : 0,
+        'completedDeliveryCount' => $agent
+            ? Shipment::where('delivery_agent_id', $agent->id)->where('status', 'delivered')->count()
+            : 0,
+        'recentDeliveries' => $agent
+            ? Shipment::where('delivery_agent_id', $agent->id)->with('order')->latest('created_at')->limit(5)->get()
+            : collect(),
     ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 

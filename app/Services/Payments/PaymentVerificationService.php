@@ -2,6 +2,7 @@
 
 namespace App\Services\Payments;
 
+use App\Models\ActivityLog;
 use App\Models\Payment;
 use App\Services\OrderFulfillmentService;
 use App\Services\TrustScoreService;
@@ -109,6 +110,12 @@ class PaymentVerificationService
             if ($order->status === 'pending') {
                 $this->fulfillment->advanceOrderStatus($order, 'confirmed', 'Payment confirmed via '.$payment->provider.'.');
             }
+
+            ActivityLog::log(
+                'payment_received',
+                "Payment of {$payment->amount} {$payment->currency} received via {$payment->provider} for order {$order->order_number}.",
+                $order,
+            );
         });
 
         Log::info('Payment confirmed', [

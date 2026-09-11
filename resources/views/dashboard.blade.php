@@ -68,6 +68,86 @@
                         @endif
                     </div>
                 </div>
+            @elseif (auth()->user()->isDeliveryAgent())
+                @if (! $deliveryAgent || ! $deliveryAgent->is_active)
+                    <div class="bg-gold-50 border border-gold-100 rounded-2xl p-6 mb-6 flex items-start gap-4">
+                        <span class="flex items-center justify-center w-10 h-10 rounded-full bg-gold-500 text-navy-900 shrink-0">
+                            <x-icon name="shield" class="w-5 h-5" />
+                        </span>
+                        <div>
+                            <h3 class="font-heading font-semibold text-navy-900">Approval pending</h3>
+                            <p class="mt-1 text-sm text-navy-600 leading-relaxed max-w-2xl">
+                                Your delivery agent account is under review. Our team approves every agent before assigning deliveries - we'll email you once it's approved.
+                            </p>
+                        </div>
+                    </div>
+                @endif
+
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-navy-100">
+                    <div class="p-8">
+                        <h3 class="font-heading text-lg font-semibold text-navy-900">
+                            {{ __('Welcome, :name.', ['name' => explode(' ', auth()->user()->name)[0]]) }}
+                        </h3>
+
+                        @if ($deliveryAgent?->is_active)
+                            <p class="mt-2 text-sm text-navy-500">Deliveries assigned to you, and their status.</p>
+
+                            <div class="mt-6 grid sm:grid-cols-3 gap-4">
+                                <a href="{{ route('deliveries.index') }}" wire:navigate class="block p-5 rounded-xl border border-navy-100 hover:border-gold-300 hover:shadow-brand transition-all duration-200">
+                                    <p class="font-heading font-bold text-2xl text-navy-900">{{ $activeDeliveryCount }}</p>
+                                    <p class="text-sm text-navy-500 mt-1 flex items-center gap-1">
+                                        Active Deliveries
+                                        <x-icon name="arrow-right" class="w-3.5 h-3.5" />
+                                    </p>
+                                </a>
+                                <a href="{{ route('deliveries.index') }}" wire:navigate class="block p-5 rounded-xl border border-navy-100 hover:border-gold-300 hover:shadow-brand transition-all duration-200">
+                                    <p class="font-heading font-bold text-2xl text-navy-900">{{ $completedDeliveryCount }}</p>
+                                    <p class="text-sm text-navy-500 mt-1 flex items-center gap-1">
+                                        Completed
+                                        <x-icon name="arrow-right" class="w-3.5 h-3.5" />
+                                    </p>
+                                </a>
+                                <a href="{{ route('support.create') }}" wire:navigate class="block p-5 rounded-xl border border-navy-100 hover:border-gold-300 hover:shadow-brand transition-all duration-200">
+                                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-navy-50 text-navy-700">
+                                        <x-icon name="message" class="w-4 h-4" />
+                                    </span>
+                                    <p class="text-sm text-navy-500 mt-2 flex items-center gap-1">
+                                        Contact Selbuildi
+                                        <x-icon name="arrow-right" class="w-3.5 h-3.5" />
+                                    </p>
+                                </a>
+                            </div>
+
+                            @if ($recentDeliveries->isNotEmpty())
+                                <ul class="mt-6 divide-y divide-navy-100 border border-navy-100 rounded-xl overflow-hidden">
+                                    @foreach ($recentDeliveries as $shipment)
+                                        <li class="flex items-center justify-between gap-4 p-4">
+                                            <div>
+                                                <p class="font-semibold text-navy-900 text-sm">{{ $shipment->order->order_number }}</p>
+                                            </div>
+                                            <span @class([
+                                                'text-xs font-semibold px-3 py-1 rounded-full',
+                                                'bg-gold-100 text-gold-700' => in_array($shipment->status, ['pending', 'confirmed', 'processing']),
+                                                'bg-blue-100 text-blue-700' => in_array($shipment->status, ['shipped', 'out_for_delivery']),
+                                                'bg-green-100 text-green-700' => $shipment->status === 'delivered',
+                                                'bg-red-100 text-red-700' => in_array($shipment->status, ['cancelled', 'refunded']),
+                                            ])>
+                                                {{ $shipment->statusLabel() }}
+                                            </span>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        @else
+                            <p class="mt-2 text-sm text-navy-500 leading-relaxed max-w-2xl">
+                                {{ __('Deliveries assigned to you will show up here once your account is approved.') }}
+                            </p>
+                            <a href="{{ route('support.create') }}" wire:navigate>
+                                <x-secondary-button class="mt-5">Contact Selbuildi</x-secondary-button>
+                            </a>
+                        @endif
+                    </div>
+                </div>
             @else
                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
                     @foreach ([
