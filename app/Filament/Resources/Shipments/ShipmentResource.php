@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Shipments;
 
 use App\Filament\Concerns\HasDateRangeFilter;
 use App\Filament\Resources\Shipments\Pages\ManageShipments;
+use App\Models\DeliveryAgent;
 use App\Models\Order;
 use App\Models\Shipment;
 use App\Models\SupplierProfile;
@@ -11,6 +12,7 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
@@ -56,6 +58,7 @@ class ShipmentResource extends Resource
                     'success' => 'delivered',
                     'danger' => ['cancelled', 'refunded'],
                 ]),
+                TextColumn::make('deliveryAgent.name')->label('Delivery Agent')->placeholder('Unassigned')->searchable(),
                 TextColumn::make('carrier')->placeholder('—'),
                 TextColumn::make('tracking_reference')->label('Tracking #')->placeholder('—')->copyable(),
                 TextColumn::make('dispatched_at')->label('Dispatched')->dateTime()->placeholder('—')->sortable(),
@@ -81,6 +84,9 @@ class ShipmentResource extends Resource
                 SelectFilter::make('supplier_profile_id')
                     ->label('Supplier')
                     ->options(fn () => SupplierProfile::orderBy('business_name')->pluck('business_name', 'id')),
+                SelectFilter::make('delivery_agent_id')
+                    ->label('Delivery Agent')
+                    ->options(fn () => DeliveryAgent::orderBy('name')->pluck('name', 'id')),
                 static::dateRangeFilter('delivered_at', 'Delivered'),
             ])
             ->recordActions([
@@ -88,6 +94,8 @@ class ShipmentResource extends Resource
                     Section::make('Shipment')->schema([
                         TextEntry::make('order.order_number')->label('Order'),
                         TextEntry::make('supplierProfile.business_name')->label('Supplier'),
+                        TextEntry::make('deliveryAgent.name')->label('Delivery Agent')->placeholder('Unassigned'),
+                        TextEntry::make('deliveryAgent.phone')->label('Agent Phone')->placeholder('—')->visible(fn (Shipment $record) => $record->delivery_agent_id !== null),
                         TextEntry::make('status')->badge(),
                         TextEntry::make('carrier')->placeholder('—'),
                         TextEntry::make('tracking_reference')->label('Tracking #')->placeholder('—'),
@@ -98,6 +106,22 @@ class ShipmentResource extends Resource
                         TextEntry::make('notes')->placeholder('—')->columnSpanFull(),
                     ])->columns(2),
                 ]),
+                Action::make('assignAgent')
+                    ->label(fn (Shipment $record) => $record->delivery_agent_id ? 'Reassign Agent' : 'Assign Agent')
+                    ->icon(Heroicon::OutlinedUserGroup)
+                    ->color('gray')
+                    ->schema([
+                        Select::make('delivery_agent_id')
+                            ->label('Delivery agent')
+                            ->options(fn () => DeliveryAgent::where('is_active', true)->orderBy('name')->pluck('name', 'id'))
+                            ->searchable()
+                            ->required(),
+                    ])
+                    ->fillForm(fn (Shipment $record) => ['delivery_agent_id' => $record->delivery_agent_id])
+                    ->action(function (Shipment $record, array $data) {
+                        $record->update(['delivery_agent_id' => $data['delivery_agent_id']]);
+                        Notification::make()->title('Delivery agent assigned')->success()->send();
+                    }),
                 Action::make('updateLogistics')
                     ->label('Logistics Info')
                     ->icon(Heroicon::OutlinedTruck)

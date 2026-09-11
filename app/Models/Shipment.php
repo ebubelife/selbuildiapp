@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'order_id', 'supplier_profile_id', 'status', 'carrier', 'tracking_reference',
+    'order_id', 'supplier_profile_id', 'delivery_agent_id', 'status', 'carrier', 'tracking_reference',
     'dispatched_at', 'expected_delivery_at', 'delivered_at', 'proof_of_delivery_note', 'notes',
 ])]
 class Shipment extends Model
@@ -29,6 +29,11 @@ class Shipment extends Model
     public function supplierProfile(): BelongsTo
     {
         return $this->belongsTo(SupplierProfile::class);
+    }
+
+    public function deliveryAgent(): BelongsTo
+    {
+        return $this->belongsTo(DeliveryAgent::class);
     }
 
     public function statusLabel(): string
