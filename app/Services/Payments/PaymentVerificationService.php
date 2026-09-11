@@ -122,13 +122,23 @@ class PaymentVerificationService
     /**
      * Feeds a failed payment attempt into the customer's Trust Score
      * history (see #6 in the stakeholder tracker) - previously only
-     * successful payments showed up there at all.
+     * successful payments showed up there at all. Also flips the order's
+     * own payment_status to 'failed' - it used to just stay 'pending'
+     * forever, which both looked wrong on the order page and meant there
+     * was no reliable signal to offer the customer a "Retry Payment"
+     * button from.
      */
     private function recordPaymentFailed(Payment $payment): void
     {
         $order = $payment->order;
 
-        if ($order?->user) {
+        if (! $order) {
+            return;
+        }
+
+        $order->update(['payment_status' => 'failed']);
+
+        if ($order->user) {
             $this->trustScoreService->recordEvent($order->user, 'payment_failed', $order);
         }
     }

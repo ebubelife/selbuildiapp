@@ -19,6 +19,14 @@ class Order extends Model
         'out_for_delivery', 'delivered', 'cancelled', 'refunded',
     ];
 
+    // Kept as a plain list here rather than reusing
+    // PaymentGatewayManager::DRIVERS - that class lives in the
+    // Services\Payments layer and pulls in the gateway manager just to
+    // check a string, which isn't worth the coupling for what's really
+    // just "which values does payment_method take that aren't
+    // cash/credit."
+    private const ONLINE_PAYMENT_METHODS = ['flutterwave', 'paystack', 'fapshi'];
+
     protected function casts(): array
     {
         return [
@@ -75,6 +83,38 @@ class Order extends Model
     public function statusLabel(): string
     {
         return str($this->status)->replace('_', ' ')->title();
+    }
+
+    public function isOnlinePayment(): bool
+    {
+        return in_array($this->payment_method, self::ONLINE_PAYMENT_METHODS, true);
+    }
+
+    public function paymentMethodLabel(): string
+    {
+        return match ($this->payment_method) {
+            'selbuildi_credit' => 'Selbuildi Credit',
+            'cash_on_delivery' => 'Cash / Pay on Delivery',
+            'flutterwave' => 'Flutterwave',
+            'paystack' => 'Paystack',
+            'fapshi' => 'Fapshi (MTN/Orange Money)',
+            default => ucfirst((string) $this->payment_method),
+        };
+    }
+
+    /**
+     * Whether this order is stuck waiting on an online payment that
+     * either failed outright or never got past initialization - the
+     * condition under which the order page offers a "Retry Payment"
+     * button, since otherwise a customer whose card was declined (or who
+     * closed the provider's page) had no way back in except placing a
+     * brand new order.
+     */
+    public function canRetryPayment(): bool
+    {
+        return $this->isOnlinePayment()
+            && $this->payment_status !== 'paid'
+            && ! in_array($this->status, ['cancelled', 'refunded'], true);
     }
 
     public function formattedTotal(): string

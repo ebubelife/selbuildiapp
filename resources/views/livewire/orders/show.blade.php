@@ -1,7 +1,11 @@
 <?php
 
 use App\Models\Order;
+use App\Models\Payment;
+use App\Services\Payments\PaymentGatewayManager;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -14,6 +18,53 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
         abort_unless($order->user_id === Auth::id(), 403);
 
         $this->order = $order->load(['items.product.category', 'items.supplierProfile', 'shippingAddress', 'statusHistory']);
+    }
+
+    /**
+     * Starts a brand new payment attempt for an order stuck on a failed
+     * or never-completed online payment - a declined card, a closed
+     * provider page, or the initialize-at-checkout failure all left the
+     * customer with no way back in before this existed, short of placing
+     * an entirely new order.
+     */
+    public function retryPayment(PaymentGatewayManager $gateways): void
+    {
+        abort_unless($this->order->canRetryPayment(), 403);
+
+        if (! $gateways->isEnabled($this->order->payment_method)) {
+            session()->flash('paymentError', ucfirst($this->order->payment_method).' is not available right now - please contact support or try again later.');
+
+            return;
+        }
+
+        $payment = Payment::create([
+            'order_id' => $this->order->id,
+            'provider' => $this->order->payment_method,
+            'amount' => $this->order->total,
+            'currency' => $this->order->currency,
+            'status' => 'pending',
+            'reference' => 'SB-'.strtoupper(Str::random(12)),
+        ]);
+
+        try {
+            $checkoutUrl = $gateways->make($this->order->payment_method)->initialize(
+                $payment,
+                route('payments.callback', ['provider' => $this->order->payment_method, 'reference' => $payment->reference])
+            );
+        } catch (Throwable $e) {
+            Log::error('Payment retry initialize failed', [
+                'provider' => $this->order->payment_method,
+                'order_id' => $this->order->id,
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            session()->flash('paymentError', "We couldn't start your {$payment->provider} payment just now. Please try again in a moment.");
+
+            return;
+        }
+
+        $this->redirect($checkoutUrl);
     }
 }; ?>
 
@@ -126,8 +177,28 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                         <x-icon name="wallet" class="w-4 h-4" />
                         Payment
                     </h3>
-                    <p class="mt-2 text-sm text-navy-600">{{ $order->payment_method === 'selbuildi_credit' ? 'Selbuildi Credit' : 'Cash / Pay on Delivery' }}</p>
-                    <p class="text-xs text-navy-400 mt-1">Status: {{ ucfirst($order->payment_status) }}</p>
+                    <p class="mt-2 text-sm text-navy-600">{{ $order->paymentMethodLabel() }}</p>
+                    <p @class([
+                        'text-xs mt-1 font-semibold',
+                        'text-green-600' => $order->payment_status === 'paid',
+                        'text-red-600' => $order->payment_status === 'failed',
+                        'text-navy-400' => ! in_array($order->payment_status, ['paid', 'failed']),
+                    ])>
+                        Status: {{ ucfirst($order->payment_status) }}
+                    </p>
+
+                    @if ($order->canRetryPayment())
+                        <button
+                            type="button"
+                            wire:click="retryPayment"
+                            wire:loading.attr="disabled"
+                            wire:target="retryPayment"
+                            class="mt-3 w-full text-center text-sm font-semibold text-white bg-navy-900 hover:bg-navy-800 disabled:opacity-60 rounded-lg py-2 transition-colors"
+                        >
+                            <span wire:loading.remove wire:target="retryPayment">Retry Payment</span>
+                            <span wire:loading wire:target="retryPayment">Starting payment&hellip;</span>
+                        </button>
+                    @endif
                 </div>
             </div>
 

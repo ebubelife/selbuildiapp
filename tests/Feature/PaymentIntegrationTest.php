@@ -189,7 +189,11 @@ class PaymentIntegrationTest extends TestCase
         app(PaymentVerificationService::class)->confirm('paystack', $payment->reference);
 
         $this->assertSame('failed', $payment->fresh()->status);
-        $this->assertSame('pending', $order->fresh()->payment_status);
+        // The order itself now also reflects the failure, not just the
+        // payment attempt - previously stayed 'pending' forever, which
+        // both looked wrong on the order page and left no way to offer
+        // the customer a retry.
+        $this->assertSame('failed', $order->fresh()->payment_status);
         $this->assertDatabaseHas('trust_score_events', [
             'user_id' => $order->user_id,
             'event_type' => 'payment_failed',
