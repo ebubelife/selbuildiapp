@@ -422,11 +422,13 @@
 
              Two layers: a flat dark wash first, so the text stays
              readable no matter how bright the photo is, then a
-             directional gradient on top for depth/richness - the flat
-             layer alone would look flat, the gradient alone risked being
-             too light near the top where the badge/heading sit. --}}
-        <div class="absolute inset-0 bg-navy-950/70"></div>
-        <div class="absolute inset-0 bg-gradient-to-b from-navy-950/60 via-navy-900/70 to-navy-950/90"></div>
+             directional gradient on top for depth/richness. Only
+             navy-700/800/900 exist in this project's palette (see
+             tailwind.config.js) - navy-950 doesn't, so a class built from
+             it silently generates no CSS at all, which is why this
+             overlay wasn't showing up. --}}
+        <div class="absolute inset-0 bg-navy-900/80"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-navy-900/70 via-navy-800/75 to-navy-900/90"></div>
 
         <div class="relative max-w-3xl mx-auto px-6 lg:px-8 text-center">
             <span class="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-1.5 text-sm font-medium text-gold-300">
