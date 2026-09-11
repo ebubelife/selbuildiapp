@@ -151,6 +151,17 @@ class ShipmentResource extends Resource
 
                         Notification::make()->title('Delivery agent assigned')->success()->send();
                     }),
+                Action::make('unassignAgent')
+                    ->label('Unassign Agent')
+                    ->icon(Heroicon::OutlinedXCircle)
+                    ->color('danger')
+                    ->visible(fn (Shipment $record) => $record->delivery_agent_id !== null)
+                    ->requiresConfirmation()
+                    ->modalDescription('This removes the delivery agent from this shipment entirely - it stays unassigned until someone is assigned again.')
+                    ->action(function (Shipment $record) {
+                        $record->update(['delivery_agent_id' => null]);
+                        Notification::make()->title('Delivery agent unassigned')->success()->send();
+                    }),
                 Action::make('updateLogistics')
                     ->label('Logistics Info')
                     ->icon(Heroicon::OutlinedTruck)

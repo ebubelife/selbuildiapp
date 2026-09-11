@@ -171,6 +171,47 @@ class DeliveryAgentTest extends TestCase
         $this->assertSame($agent->id, $shipment->fresh()->delivery_agent_id);
     }
 
+    public function test_an_admin_can_reassign_a_shipment_to_a_different_agent(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $firstAgent = DeliveryAgent::create(['name' => 'Jean Baptiste', 'email' => 'jean@example.com', 'phone' => '+237670000001', 'is_active' => true]);
+        $secondAgent = DeliveryAgent::create(['name' => 'Marie Ngono', 'email' => 'marie@example.com', 'phone' => '+237670000006', 'is_active' => true]);
+        $shipment = $this->makeShipment();
+        $shipment->update(['delivery_agent_id' => $firstAgent->id]);
+
+        $this->actingAs($admin, 'admin');
+
+        Livewire::test(ManageShipments::class)
+            ->callTableAction('assignAgent', $shipment, data: ['delivery_agent_id' => $secondAgent->id]);
+
+        $this->assertSame($secondAgent->id, $shipment->fresh()->delivery_agent_id);
+    }
+
+    public function test_an_admin_can_unassign_a_delivery_agent_from_a_shipment(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $agent = DeliveryAgent::create(['name' => 'Jean Baptiste', 'email' => 'jean@example.com', 'phone' => '+237670000001', 'is_active' => true]);
+        $shipment = $this->makeShipment();
+        $shipment->update(['delivery_agent_id' => $agent->id]);
+
+        $this->actingAs($admin, 'admin');
+
+        Livewire::test(ManageShipments::class)->callTableAction('unassignAgent', $shipment);
+
+        $this->assertNull($shipment->fresh()->delivery_agent_id);
+    }
+
+    public function test_the_unassign_action_is_hidden_when_no_agent_is_assigned(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $shipment = $this->makeShipment();
+
+        $this->actingAs($admin, 'admin');
+
+        Livewire::test(ManageShipments::class)
+            ->assertTableActionHidden('unassignAgent', $shipment);
+    }
+
     public function test_the_shipments_list_shows_which_agent_is_handling_it(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
