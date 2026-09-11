@@ -43,6 +43,8 @@
             </main>
         </div>
 
+        <x-whatsapp-fab />
+
         @livewireScripts
     </body>
 </html>

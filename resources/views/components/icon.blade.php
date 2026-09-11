@@ -22,6 +22,7 @@
         'clock' => '<circle cx="12" cy="12" r="9" /><path d="M12 7.5v5l3 2.5" />',
         'cart' => '<circle cx="9" cy="20" r="1.3" /><circle cx="18" cy="20" r="1.3" /><path d="M3 4h2l2.4 11.4a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.6L21 8H6.2" />',
         'phone' => '<rect x="6.5" y="2.5" width="11" height="19" rx="2" /><line x1="6.5" y1="17.5" x2="17.5" y2="17.5" /><line x1="11" y1="20" x2="13" y2="20" />',
+        'message' => '<path d="M4 5.5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4.5 3.5V17.5H4a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1Z" />',
     ];
 
     $inner = $paths[$name] ?? '';

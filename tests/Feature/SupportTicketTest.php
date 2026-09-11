@@ -171,4 +171,75 @@ class SupportTicketTest extends TestCase
 
         $this->assertSame('2', \App\Filament\Resources\SupportTickets\SupportTicketResource::getNavigationBadge());
     }
+
+    public function test_a_supplier_can_submit_a_message_to_admin(): void
+    {
+        $user = User::factory()->create(['role' => 'supplier']);
+        SupplierProfile::create([
+            'user_id' => $user->id,
+            'business_name' => 'Test Supplier',
+            'slug' => 'test-supplier-'.uniqid(),
+            'verified_at' => now(),
+        ]);
+        $this->actingAs($user);
+
+        Volt::test('support.create')
+            ->assertSee('Contact Selbuildi')
+            ->set('subject', 'Question about my listing')
+            ->set('body', 'One of my products is showing the wrong price.')
+            ->call('submit')
+            ->assertSet('submitted', true);
+
+        $this->assertDatabaseHas('support_tickets', [
+            'user_id' => $user->id,
+            'type' => 'general',
+            'subject' => 'Question about my listing',
+        ]);
+    }
+
+    public function test_a_supplier_does_not_see_the_sourcing_help_option(): void
+    {
+        $user = User::factory()->create(['role' => 'supplier']);
+        SupplierProfile::create([
+            'user_id' => $user->id,
+            'business_name' => 'Test Supplier',
+            'slug' => 'test-supplier-'.uniqid(),
+            'verified_at' => now(),
+        ]);
+        $this->actingAs($user);
+
+        Volt::test('support.create')
+            ->assertDontSee("Can't find what I need");
+    }
+
+    public function test_the_admin_ticket_list_shows_the_senders_account_type(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $supplierUser = User::factory()->create(['role' => 'supplier', 'name' => 'Acme Supplies']);
+        SupportTicket::create(['user_id' => $supplierUser->id, 'type' => 'general', 'subject' => 'Listing issue', 'body' => 'Body text.']);
+
+        $this->actingAs($admin, 'admin');
+
+        Livewire::test(ManageSupportTickets::class)
+            ->assertSee('Acme Supplies')
+            ->assertSee('Supplier');
+    }
+
+    public function test_admin_can_filter_tickets_by_account_type(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $customer = User::factory()->create(['role' => 'customer', 'name' => 'A Customer']);
+        $supplierUser = User::factory()->create(['role' => 'supplier', 'name' => 'A Supplier']);
+        SupportTicket::create(['user_id' => $customer->id, 'type' => 'general', 'subject' => 'From customer', 'body' => 'Body.']);
+        SupportTicket::create(['user_id' => $supplierUser->id, 'type' => 'general', 'subject' => 'From supplier', 'body' => 'Body.']);
+
+        $this->actingAs($admin, 'admin');
+
+        Livewire::test(ManageSupportTickets::class)
+            ->assertSee('From customer')
+            ->assertSee('From supplier')
+            ->filterTable('account_type', 'supplier')
+            ->assertSee('From supplier')
+            ->assertDontSee('From customer');
+    }
 }

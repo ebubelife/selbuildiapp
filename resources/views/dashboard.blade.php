@@ -33,7 +33,7 @@
                         @if ($supplier?->isVerified())
                             <p class="mt-2 text-sm text-navy-500">Manage your listings and fulfill orders from here.</p>
 
-                            <div class="mt-6 grid sm:grid-cols-2 gap-4">
+                            <div class="mt-6 grid sm:grid-cols-3 gap-4">
                                 <a href="{{ route('supplier.products.index') }}" wire:navigate class="block p-5 rounded-xl border border-navy-100 hover:border-gold-300 hover:shadow-brand transition-all duration-200">
                                     <p class="font-heading font-bold text-2xl text-navy-900">{{ $productCount }}</p>
                                     <p class="text-sm text-navy-500 mt-1 flex items-center gap-1">
@@ -48,22 +48,35 @@
                                         <x-icon name="arrow-right" class="w-3.5 h-3.5" />
                                     </p>
                                 </a>
+                                <a href="{{ route('support.create') }}" wire:navigate class="block p-5 rounded-xl border border-navy-100 hover:border-gold-300 hover:shadow-brand transition-all duration-200">
+                                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-navy-50 text-navy-700">
+                                        <x-icon name="message" class="w-4 h-4" />
+                                    </span>
+                                    <p class="text-sm text-navy-500 mt-2 flex items-center gap-1">
+                                        Contact Selbuildi
+                                        <x-icon name="arrow-right" class="w-3.5 h-3.5" />
+                                    </p>
+                                </a>
                             </div>
                         @else
                             <p class="mt-2 text-sm text-navy-500 leading-relaxed max-w-2xl">
                                 {{ __('Your product listings, inventory, and orders will show up here once your account is verified.') }}
                             </p>
+                            <a href="{{ route('support.create') }}" wire:navigate>
+                                <x-secondary-button class="mt-5">Contact Selbuildi</x-secondary-button>
+                            </a>
                         @endif
                     </div>
                 </div>
             @else
-                <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
                     @foreach ([
                         ['route' => 'checkout.index', 'icon' => 'cart', 'label' => 'View Cart'],
                         ['route' => 'orders.index', 'icon' => 'truck', 'label' => 'Order History'],
                         ['route' => 'addresses.index', 'icon' => 'map-pin', 'label' => 'My Addresses'],
                         ['route' => 'credit.index', 'icon' => 'star', 'label' => 'Trust &amp; Credit'],
                         ['route' => 'profile', 'icon' => 'shield', 'label' => 'Profile &amp; Security'],
+                        ['route' => 'support.create', 'icon' => 'message', 'label' => 'Contact'],
                     ] as $action)
                         <a
                             href="{{ route($action['route']) }}"

@@ -65,7 +65,15 @@ class SupportTicketResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('user.name')->label('Customer')->searchable(),
+                TextColumn::make('user.name')->label('From')->searchable(),
+                BadgeColumn::make('user.role')
+                    ->label('Account')
+                    ->formatStateUsing(fn (?string $state) => $state ? ucfirst($state) : '—')
+                    ->colors([
+                        'gray' => 'customer',
+                        'info' => 'contractor',
+                        'warning' => 'supplier',
+                    ]),
                 BadgeColumn::make('type')
                     ->label('Type')
                     ->formatStateUsing(fn (SupportTicket $record) => $record->typeLabel())
@@ -94,6 +102,13 @@ class SupportTicketResource extends Resource
                     'responded' => 'Responded',
                     'resolved' => 'Resolved',
                 ]),
+                SelectFilter::make('account_type')
+                    ->label('Account type')
+                    ->options(['customer' => 'Customer', 'contractor' => 'Contractor', 'supplier' => 'Supplier'])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['value'] ?? null,
+                        fn ($query, $role) => $query->whereHas('user', fn ($q) => $q->where('role', $role))
+                    )),
                 SelectFilter::make('type')->options([
                     'general' => 'General Enquiry',
                     'procurement_request' => "Can't Find What You Need",
@@ -108,7 +123,8 @@ class SupportTicketResource extends Resource
                     ->schema([
                         Section::make('Message')
                             ->schema([
-                                TextEntry::make('user.name')->label('Customer'),
+                                TextEntry::make('user.name')->label('From'),
+                                TextEntry::make('user.role')->label('Account type')->formatStateUsing(fn (?string $state) => $state ? ucfirst($state) : '—')->badge(),
                                 TextEntry::make('user.email')->label('Email'),
                                 TextEntry::make('product.name')->label('Product')->visible(fn (SupportTicket $record) => $record->product_id !== null),
                                 TextEntry::make('subject'),

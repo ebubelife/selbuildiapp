@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Models\SiteSetting;
 use App\Models\SupplierProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -89,5 +90,77 @@ class DashboardTest extends TestCase
         $this->actingAs($user);
 
         $this->get(route('dashboard'))->assertOk();
+    }
+
+    public function test_customer_dashboard_has_a_contact_link(): void
+    {
+        $user = User::factory()->create(['role' => 'customer', 'email_verified_at' => now()]);
+        $this->actingAs($user);
+
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('href="'.route('support.create').'"', escape: false);
+    }
+
+    public function test_verified_supplier_dashboard_has_a_contact_link(): void
+    {
+        $user = User::factory()->create(['role' => 'supplier', 'email_verified_at' => now()]);
+        SupplierProfile::create([
+            'user_id' => $user->id,
+            'business_name' => 'Test Supplier',
+            'slug' => 'test-supplier-'.uniqid(),
+            'verified_at' => now(),
+        ]);
+        $this->actingAs($user);
+
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Contact Selbuildi')
+            ->assertSee('href="'.route('support.create').'"', escape: false);
+    }
+
+    public function test_unverified_supplier_dashboard_still_has_a_contact_link(): void
+    {
+        $user = User::factory()->create(['role' => 'supplier', 'email_verified_at' => now()]);
+        SupplierProfile::create([
+            'user_id' => $user->id,
+            'business_name' => 'Pending Supplier',
+            'slug' => 'pending-supplier-'.uniqid(),
+        ]);
+        $this->actingAs($user);
+
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Contact Selbuildi');
+    }
+
+    public function test_the_whatsapp_button_appears_on_the_dashboard_when_configured(): void
+    {
+        SiteSetting::set('whatsapp_number', '237670000000');
+
+        $user = User::factory()->create(['role' => 'customer', 'email_verified_at' => now()]);
+        $this->actingAs($user);
+
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('https://wa.me/237670000000', escape: false);
+    }
+
+    public function test_the_whatsapp_button_appears_on_the_supplier_dashboard_too(): void
+    {
+        SiteSetting::set('whatsapp_number', '237670000000');
+
+        $user = User::factory()->create(['role' => 'supplier', 'email_verified_at' => now()]);
+        SupplierProfile::create([
+            'user_id' => $user->id,
+            'business_name' => 'Test Supplier',
+            'slug' => 'test-supplier-'.uniqid(),
+            'verified_at' => now(),
+        ]);
+        $this->actingAs($user);
+
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('https://wa.me/237670000000', escape: false);
     }
 }

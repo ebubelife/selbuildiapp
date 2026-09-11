@@ -62,6 +62,7 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
     {
         return [
             'product' => $this->productId ? Product::find($this->productId) : null,
+            'isSupplier' => Auth::user()->isSupplier(),
         ];
     }
 }; ?>
@@ -71,10 +72,16 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
         <div class="max-w-2xl mx-auto px-6 lg:px-8 text-center">
             <span class="text-sm font-semibold text-gold-500 uppercase tracking-wide">Get in Touch</span>
             <h1 class="mt-3 font-heading text-3xl sm:text-4xl font-bold text-white">
-                {{ $product ? 'Request a Quote' : "Can't find what you need?" }}
+                {{ $product ? 'Request a Quote' : ($isSupplier ? 'Contact Selbuildi' : "Can't find what you need?") }}
             </h1>
             <p class="mt-3 text-navy-200">
-                {{ $product ? "Tell us your quantity and requirements for {$product->name}, and we'll get back to you with a quote." : "Tell us what you're looking for and we'll help you source it — or reach out with any other question." }}
+                @if ($product)
+                    Tell us your quantity and requirements for {{ $product->name }}, and we'll get back to you with a quote.
+                @elseif ($isSupplier)
+                    Questions about your listings, an order, or anything else — send us a message and our team will get back to you by email.
+                @else
+                    Tell us what you're looking for and we'll help you source it — or reach out with any other question.
+                @endif
             </p>
         </div>
     </section>
@@ -89,8 +96,8 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                         </span>
                         <h2 class="mt-4 font-heading text-lg font-semibold text-navy-900">Message sent</h2>
                         <p class="mt-2 text-sm text-navy-500">Our team will review this and get back to you by email.</p>
-                        <a href="{{ route('shop.index') }}" wire:navigate>
-                            <x-primary-button class="mt-6">Back to Shop</x-primary-button>
+                        <a href="{{ $isSupplier ? route('dashboard') : route('shop.index') }}" wire:navigate>
+                            <x-primary-button class="mt-6">{{ $isSupplier ? 'Back to Dashboard' : 'Back to Shop' }}</x-primary-button>
                         </a>
                     </div>
                 @else
@@ -108,7 +115,9 @@ new #[Layout('components.layouts.site', ['noindex' => true])] class extends Comp
                                 <x-input-label for="type" value="What's this about?" />
                                 <select wire:model="type" id="type" class="mt-1 block w-full rounded-lg border-navy-200 focus:border-gold-500 focus:ring-gold-500 text-sm">
                                     <option value="general">General enquiry</option>
-                                    <option value="procurement_request">Can't find what I need — help me source it</option>
+                                    @unless ($isSupplier)
+                                        <option value="procurement_request">Can't find what I need — help me source it</option>
+                                    @endunless
                                     <option value="complaint">Complaint</option>
                                     <option value="other">Other</option>
                                 </select>

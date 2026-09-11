@@ -56,6 +56,9 @@ new class extends Component
                             {{ __('Orders') }}
                         </x-nav-link>
                     @endif
+                    <x-nav-link :href="route('support.create')" :active="request()->routeIs('support.create')" wire:navigate>
+                        {{ __('Contact') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -139,6 +142,9 @@ new class extends Component
                     {{ __('Orders') }}
                 </x-responsive-nav-link>
             @endif
+            <x-responsive-nav-link :href="route('support.create')" :active="request()->routeIs('support.create')" wire:navigate>
+                {{ __('Contact') }}
+            </x-responsive-nav-link>
         </div>
 
         <!-- Responsive Settings Options -->
