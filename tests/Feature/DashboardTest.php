@@ -58,6 +58,16 @@ class DashboardTest extends TestCase
             ->assertSee('View Cart');
     }
 
+    public function test_the_logo_links_home_not_back_to_the_dashboard(): void
+    {
+        $user = User::factory()->create(['role' => 'customer', 'email_verified_at' => now()]);
+        $this->actingAs($user);
+
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('href="'.route('home').'"', escape: false);
+    }
+
     public function test_shop_materials_section_shows_a_products_own_photo_when_one_exists(): void
     {
         $product = $this->createProduct();
